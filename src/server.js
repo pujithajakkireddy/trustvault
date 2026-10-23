@@ -139,7 +139,6 @@ app.use("/api/documents", csrfProtection, documentRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Centralized error handling for upload and other request errors.
-// Keep this after the routes so errors can reach this middleware.
 app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);
@@ -169,5 +168,7 @@ if (require.main === module) {
     console.log(`TrustVault is running on port ${PORT}`);
   });
 }
-
+if (process.env.NODE_ENV === "test") {
+  app.locals.resetLoginLimiter = () => loginLimiter.resetKey("127.0.0.1");
+}
 module.exports = app;

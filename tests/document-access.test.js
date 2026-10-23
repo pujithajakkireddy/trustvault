@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const request = require("supertest");
 
@@ -767,7 +768,93 @@ test("document uploads reject oversized and invalid files", async (t) => {
     }
   }
 });
+test("document download detects SHA-256 integrity failures", async () => {
+    await app.locals.resetLoginLimiter?.();
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const email = `tv-integrity-${suffix}@example.test`;
+  const password = `Integrity-${suffix}-Pass!`;
+  const originalContent = Buffer.from("%PDF-1.4 integrity test");
+  const passwordHash = await bcrypt.hash(password, 4);
 
+  let userId;
+  let documentId;
+
+  try {
+    const userResult = await pool.query(
+      `INSERT INTO users (name, email, password_hash, role)
+       VALUES ($1, $2, $3, 'owner')
+       RETURNING id`,
+      ["Integrity Test Owner", email, passwordHash]
+    );
+
+    userId = userResult.rows[0].id;
+
+    const sha256Hash = crypto
+      .createHash("sha256")
+      .update(originalContent)
+      .digest("hex");
+
+    const documentResult = await pool.query(
+      `INSERT INTO documents
+         (owner_id, name, category, mime_type, size_bytes, content, sha256_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        userId,
+        "integrity-test.pdf",
+        "Automated Test",
+        "application/pdf",
+        originalContent.length,
+        originalContent,
+        sha256Hash,
+      ]
+    );
+
+    documentId = documentResult.rows[0].id;
+
+    const agent = request.agent(app);
+
+    const login = await agent
+      .post("/api/auth/login")
+      .send({ email, password });
+
+    assert.equal(login.status, 200, "owner login should succeed");
+
+    const validDownload = await agent.get(
+      `/api/documents/${documentId}/download`
+    );
+
+    assert.equal(validDownload.status, 200);
+    assert.equal(validDownload.body.toString(), originalContent.toString());
+    assert.equal(validDownload.headers["x-document-sha256"], sha256Hash);
+
+    // Simulate content tampering directly in the test database.
+    await pool.query(
+      `UPDATE documents
+       SET content = $2
+       WHERE id = $1`,
+      [documentId, Buffer.from("%PDF-1.4 tampered content")]
+    );
+
+    const tamperedDownload = await agent.get(
+      `/api/documents/${documentId}/download`
+    );
+
+    assert.equal(tamperedDownload.status, 500);
+    assert.match(
+      tamperedDownload.body.error,
+      /integrity verification failed/i
+    );
+  } finally {
+    if (documentId) {
+      await pool.query("DELETE FROM documents WHERE id = $1", [documentId]);
+    }
+
+    if (userId) {
+      await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+    }
+  }
+});
 test.after(async () => {
   await pool.end();
 });
