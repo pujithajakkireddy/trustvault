@@ -17,9 +17,13 @@ CREATE TABLE IF NOT EXISTS documents (
     mime_type VARCHAR(150) NOT NULL,
     size_bytes BIGINT NOT NULL CHECK (size_bytes > 0),
     content BYTEA NOT NULL,
+    sha256_hash VARCHAR(64),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE documents
+    ADD COLUMN IF NOT EXISTS sha256_hash VARCHAR(64);
 
 CREATE TABLE IF NOT EXISTS document_permissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

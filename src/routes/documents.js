@@ -1,5 +1,5 @@
-
 const express = require("express");
+const crypto = require("node:crypto");
 const pool = require("../db/database");
 const requireAuth = require("../middleware/require-auth");
 const { writeAuditLog } = require("../services/audit");
@@ -9,8 +9,6 @@ const {
 } = require("../middleware/upload");
 
 const router = express.Router();
-
-// List only documents the logged-in user is allowed to read.
 
 const DOCUMENT_UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -87,7 +85,9 @@ router.get("/", requireAuth, async (req, res) => {
 
     if (to) {
       values.push(to);
-      filters.push(`d.created_at < ($${values.length}::date + INTERVAL '1 day')`);
+      filters.push(
+        `d.created_at < ($${values.length}::date + INTERVAL '1 day')`
+      );
     }
 
     const result = await pool.query(
@@ -118,21 +118,18 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-
-// Download only if the authenticated user owns the document
-// or has explicit read permission.
+// Download a document only if the authenticated user owns it
+// or has explicit read permission. Verify SHA-256 before returning content.
 router.get("/:id/download", requireAuth, async (req, res) => {
   const documentId = req.params.id;
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!uuidPattern.test(documentId)) {
+  if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
     return res.status(400).json({ error: "Invalid document ID." });
   }
 
   try {
     const result = await pool.query(
-      `SELECT d.name, d.mime_type, d.content
+      `SELECT d.name, d.mime_type, d.content, d.sha256_hash
        FROM documents AS d
        LEFT JOIN document_permissions AS p
          ON p.document_id = d.id
@@ -142,6 +139,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
        LIMIT 1`,
       [documentId, req.session.user.id]
     );
+
     if (result.rows.length === 0) {
       await writeAuditLog({
         actorId: req.session.user.id,
@@ -153,6 +151,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
         },
         outcome: "denied",
       });
+
       return res.status(404).json({
         error: "Document not found.",
       });
@@ -160,12 +159,45 @@ router.get("/:id/download", requireAuth, async (req, res) => {
 
     const document = result.rows[0];
 
+    const actualHash = crypto
+      .createHash("sha256")
+      .update(document.content)
+      .digest("hex");
+
+    // Backfill hashes for documents uploaded before integrity checking
+    // was introduced. Existing file contents are not changed.
+    if (!document.sha256_hash) {
+      await pool.query(
+        `UPDATE documents
+         SET sha256_hash = $2
+         WHERE id = $1 AND sha256_hash IS NULL`,
+        [documentId, actualHash]
+      );
+    } else if (document.sha256_hash !== actualHash) {
+      await writeAuditLog({
+        actorId: req.session.user.id,
+        action: "document.integrity_check",
+        documentId,
+        details: {
+          reason: "sha256_mismatch",
+        },
+        outcome: "failure",
+      });
+
+      return res.status(500).json({
+        error:
+          "Document integrity verification failed. The file was not downloaded.",
+      });
+    }
+
     await writeAuditLog({
       actorId: req.session.user.id,
       action: "document.download",
       documentId,
       details: {
         outcome: "authorized",
+        integrityVerified: true,
+        sha256Hash: actualHash,
       },
       outcome: "success",
     });
@@ -176,6 +208,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
       "Content-Disposition",
       `attachment; filename="document-${documentId}"`
     );
+    res.set("X-Document-SHA256", actualHash);
 
     return res.status(200).send(document.content);
   } catch (error) {
@@ -186,7 +219,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
   }
 });
 
-// Upload a validated document and store it in PostgreSQL.
+// Upload a validated document and store its SHA-256 hash in PostgreSQL.
 router.post(
   "/upload",
   requireAuth,
@@ -208,13 +241,18 @@ router.post(
     try {
       const file = req.validatedFile;
 
+      const sha256Hash = crypto
+        .createHash("sha256")
+        .update(file.buffer)
+        .digest("hex");
+
       const result = await pool.query(
         `INSERT INTO documents
-           (owner_id, name, category, mime_type, size_bytes, content)
-         VALUES ($1, $2, $3, $4, $5, $6)
+           (owner_id, name, category, mime_type, size_bytes, content, sha256_hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING
            id, owner_id, name, category, mime_type,
-           size_bytes, created_at, updated_at`,
+           size_bytes, sha256_hash, created_at, updated_at`,
         [
           req.session.user.id,
           file.originalName,
@@ -222,6 +260,7 @@ router.post(
           file.mimeType,
           file.size,
           file.buffer,
+          sha256Hash,
         ]
       );
 
@@ -258,10 +297,10 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
   const documentId = req.params.id;
   const { userId, canRead, canEdit } = req.body || {};
 
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidPattern.test(documentId) || !uuidPattern.test(userId || "")) {
+  if (
+    !DOCUMENT_UUID_PATTERN.test(documentId) ||
+    !DOCUMENT_UUID_PATTERN.test(userId || "")
+  ) {
     return res.status(400).json({
       error: "Valid document ID and user ID are required.",
     });
@@ -359,6 +398,7 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     console.error("Permission grant failed:", error.message);
+
     return res.status(500).json({
       error: "Unable to update document permissions.",
     });
@@ -377,10 +417,10 @@ router.delete(
   async (req, res) => {
     const { id: documentId, userId } = req.params;
 
-    const uuidPattern =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    if (!uuidPattern.test(documentId) || !uuidPattern.test(userId)) {
+    if (
+      !DOCUMENT_UUID_PATTERN.test(documentId) ||
+      !DOCUMENT_UUID_PATTERN.test(userId)
+    ) {
       return res.status(400).json({
         error: "Valid document ID and user ID are required.",
       });
@@ -440,6 +480,7 @@ router.delete(
     } catch (error) {
       await client.query("ROLLBACK").catch(() => {});
       console.error("Permission revocation failed:", error.message);
+
       return res.status(500).json({
         error: "Unable to revoke document access.",
       });
@@ -457,10 +498,7 @@ router.delete(
 router.delete("/:id", requireAuth, async (req, res) => {
   const { id: documentId } = req.params;
 
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidPattern.test(documentId)) {
+  if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
     return res.status(400).json({
       error: "A valid document ID is required.",
     });
@@ -471,7 +509,6 @@ router.delete("/:id", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Verify ownership and lock the document row.
     const ownerCheck = await client.query(
       `SELECT id, name
        FROM documents
@@ -483,7 +520,6 @@ router.delete("/:id", requireAuth, async (req, res) => {
     if (ownerCheck.rows.length === 0) {
       await client.query("ROLLBACK");
 
-      // Avoid referencing a nonexistent document in the audit foreign key.
       await writeAuditLog({
         actorId: req.session.user.id,
         action: "document.delete",
@@ -502,9 +538,6 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
     const document = ownerCheck.rows[0];
 
-    // Audit first while the document still exists.
-    // ON DELETE SET NULL clears audit_logs.document_id after deletion.
-    // Keep the document ID in details so the event remains traceable.
     await writeAuditLog({
       actorId: req.session.user.id,
       action: "document.delete",
@@ -540,24 +573,29 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Update document metadata if the user owns the document or has edit access.
 router.patch("/:id", requireAuth, async (req, res) => {
   const documentId = req.params.id;
   const { name, category } = req.body || {};
   const userId = req.session.user.id;
 
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidPattern.test(documentId)) {
+  if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
     return res.status(400).json({ error: "Invalid document ID." });
   }
 
   const changes = {};
 
   if (name !== undefined) {
-    if (typeof name !== "string" || !name.trim() || name.trim().length > 255) {
-      return res.status(400).json({ error: "Name must be 1–255 characters." });
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      name.trim().length > 255
+    ) {
+      return res.status(400).json({
+        error: "Name must be 1–255 characters.",
+      });
     }
+
     changes.name = name.trim();
   }
 
@@ -571,6 +609,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
         error: "Category must be 1–100 characters.",
       });
     }
+
     changes.category = category.trim();
   }
 
@@ -612,14 +651,16 @@ router.patch("/:id", requireAuth, async (req, res) => {
         outcome: "denied",
       });
 
-      return res.status(404).json({ error: "Document not found." });
+      return res.status(404).json({
+        error: "Document not found.",
+      });
     }
 
     const document = result.rows[0];
     const fields = Object.keys(changes);
     const values = [documentId];
 
-    const assignments = fields.map((field, index) => {
+    const assignments = fields.map((field) => {
       values.push(changes[field]);
       return `${field} = $${values.length}`;
     });
@@ -665,7 +706,10 @@ router.patch("/:id", requireAuth, async (req, res) => {
     }
 
     console.error("Document update failed:", error.message);
-    return res.status(500).json({ error: "Unable to update document." });
+
+    return res.status(500).json({
+      error: "Unable to update document.",
+    });
   } finally {
     client.release();
   }
