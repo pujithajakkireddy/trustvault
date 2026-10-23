@@ -278,3 +278,33 @@ This file records the AI assistance used while developing TrustVault. Entries de
 **Limitations and next work:** The admin audit endpoint is implemented, but a complete administrative user interface is not yet verified. Broader CSRF protection, additional audit coverage, frontend completion, deployment configuration, and further security testing are still needed.
 
 **AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, security test development, and documentation. The results recorded here reflect the implementation and tests actually completed.
+
+## Entry 13 — 2026-10-23: Frontend Integration and Manual Verification
+
+**Objective:** Connect the TrustVault web interface to the existing Express backend and verify the main user workflows.
+
+**AI assistance used:** Used AI guidance to build the HTML, CSS, and JavaScript frontend, connect frontend requests to the backend API, troubleshoot upload form handling, and review Git changes before committing.
+
+**Implementation completed:**
+- Added `public/index.html` for the registration, login, and workspace interface.
+- Added `public/styles.css` for the responsive application styling.
+- Added `public/app.js` for frontend API requests and interface interactions.
+- Updated `src/server.js` to serve the static frontend files through Express.
+- Committed the frontend integration as `6a97c86` with the message `Add TrustVault web frontend` and pushed it to the `main` branch.
+
+**Manual verification performed:**
+- Confirmed the website loads locally in the browser.
+- Tested registration and login.
+- Tested document upload and confirmed the uploaded document appeared in the workspace after refreshing.
+- Downloaded a document and confirmed the downloaded file opened correctly.
+- Tested logout and confirmed the signed-out page remained visible after refreshing.
+- Confirmed the workspace displayed the viewer role.
+- Tested the administrator audit endpoint and confirmed a viewer was denied access.
+
+**Known limitations and next work:**
+- Complete regression testing of the frontend and all document workflows.
+- Verify permission management, metadata editing, deletion, and administrative audit display through the interface.
+- Review production deployment settings and persistent file storage before using the application for real documents.
+- Update the documentation after deployment has been verified.
+
+**AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, testing instructions, and documentation. The recorded verification results reflect the checks performed during development.

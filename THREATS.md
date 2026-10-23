@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-TrustVault is a document-sharing application I am developing for the Snovasys Fresher Hiring Challenge 2026. This document explains the main security risks I considered, the protections implemented so far, the tests used to check them, and the work that remains.
+TrustVault is a document-sharing application developed for the Snovasys Fresher Hiring Challenge 2026. This document describes the security risks considered during development, the protections implemented so far, the tests used to evaluate them, and the remaining work.
 
-The application includes authentication, document permissions, search access checks, selected audit logging, and automated security tests. The tests provide evidence for specific scenarios, but they do not prove that the entire application is secure.
+The application includes authentication, document permissions, search access checks, selected audit logging, a web interface, and automated security tests. The tests provide evidence for specific scenarios, but they do not prove that the entire application is secure.
 
 ## 2. Assets to Protect
 
@@ -17,6 +17,8 @@ The main assets that need protection are:
 - Audit records that track important actions.
 - Database credentials and application configuration.
 - Search results that could reveal private document information.
+- Uploaded file contents and their storage locations.
+- Frontend-to-backend requests and authentication state.
 
 ## 3. Threats and Mitigations
 
@@ -36,7 +38,7 @@ The main assets that need protection are:
 
 **Implemented control:** Download requests check access permissions, metadata editing checks ownership or explicit edit permission, and deletion is restricted to the document owner in the tested scenarios.
 
-**Verification:** The integration tests cover owner access, explicit editor access, read-only viewer denial, unauthorized downloads, and deletion restrictions.
+**Verification:** Integration tests cover owner access, explicit editor access, read-only viewer denial, unauthorized downloads, and deletion restrictions.
 
 **Remaining risk:** Continue testing authorization boundaries and confirm that denied requests never change document data.
 
@@ -46,7 +48,7 @@ The main assets that need protection are:
 
 **Implemented control:** Registration assigns the `viewer` role by default. Role checks are performed by server-side middleware, and document permission changes are handled by protected routes.
 
-**Verification:** The admin audit endpoint tests confirm that an unauthenticated request is rejected, a viewer is denied access, and an administrator can retrieve audit records.
+**Verification:** Admin audit endpoint tests confirm that an unauthenticated request is rejected, a viewer is denied access, and an administrator can retrieve audit records.
 
 **Remaining risk:** Administrative role management and additional privilege-escalation scenarios need further testing. Client-supplied role values must not be trusted.
 
@@ -64,7 +66,7 @@ The main assets that need protection are:
 
 **Threat:** A user uploads an unsupported, malformed, or malicious file, or attempts to consume excessive resources.
 
-**Implemented controls:** Uploads have a 5 MB size limit. The application checks file signatures for supported PDF, PNG, and JPEG uploads. The tested oversized-upload error returns HTTP 413.
+**Implemented controls:** Uploads have a 5 MB size limit. The application checks file signatures for supported PDF, PNG, and JPEG uploads.
 
 **Verification:** Integration tests confirm that the tested oversized upload is rejected with HTTP 413 and unsupported file content is rejected with HTTP 400.
 
@@ -86,7 +88,7 @@ The main assets that need protection are:
 
 **Implemented controls:** Error handlers return controlled messages for reviewed cases. The audit service is designed not to record sensitive values such as passwords, session cookies, or document contents.
 
-**Verification:** The admin audit tests check selected returned fields and confirm that document content is not included in the tested audit response.
+**Verification:** Admin audit tests check selected returned fields and confirm that document content is not included in the tested audit response.
 
 **Remaining risk:** Review all routes, error handlers, and logs for accidental exposure of sensitive information.
 
@@ -110,6 +112,36 @@ The main assets that need protection are:
 
 **Remaining risk:** The mutation test checks one specific regression. More security tests and code reviews are needed to cover other possible failures.
 
+### T10. Frontend and API Integration Errors
+
+**Threat:** Frontend errors or incorrect API integration could cause users to misunderstand operation results or prevent them from completing document workflows.
+
+**Implemented controls:** The frontend is served by Express and communicates with the existing backend API. Manual checks have covered registration, login, document upload, download, logout, and the signed-out state.
+
+**Verification:** The website loaded locally, the tested uploaded document appeared in the workspace after refreshing, the downloaded file opened correctly, and a viewer was denied access to the administrator audit endpoint.
+
+**Remaining risk:** Complete regression testing is still required for permission grants and revocations, metadata editing, deletion, and the administrator audit interface. Frontend behavior must not replace server-side authorization.
+
+### T11. Loss of Uploaded Files
+
+**Threat:** Uploaded documents may be lost when an application process restarts or when a hosting platform replaces its temporary filesystem.
+
+**Current implementation:** The upload middleware uses Multer with in-memory storage. Uploaded file contents are not guaranteed to persist across process restarts.
+
+**Required mitigation:** Configure suitable persistent file storage before production use. Verify that uploaded documents remain available after application restarts and that only authorized users can retrieve them. Avoid exposing private documents through unrestricted public URLs.
+
+**Remaining risk:** Persistent file storage has not yet been configured or verified in a production deployment.
+
+### T12. Production Deployment Misconfiguration
+
+**Threat:** Incorrect production settings could expose sessions, database credentials, or protected application functionality.
+
+**Current status:** The application has been tested locally. Production deployment and its security settings have not yet been verified.
+
+**Required mitigation:** Use HTTPS, configure secure session cookies and trusted proxy settings correctly, keep secrets in the hosting provider's environment configuration, review database SSL settings, and test authentication and authorization after deployment.
+
+**Remaining risk:** These controls must be checked in the actual hosting environment before the application is considered ready for sensitive documents.
+
 ## 4. Security Verification Record
 
 The latest recorded full test run reported:
@@ -132,7 +164,7 @@ The test suite covers selected scenarios involving:
 
 A PostgreSQL SSL-mode compatibility warning has appeared during testing. It did not prevent the recorded test run from passing, but the database connection configuration still needs review.
 
-These results apply only to the scenarios exercised by the tests. They are not a complete security audit.
+These results apply only to the scenarios exercised by the tests. They are not a complete security audit and do not guarantee production readiness.
 
 ## 5. Remaining Work
 
@@ -143,12 +175,16 @@ The main security tasks still to address are:
 - Add more authorization regression tests and malformed-file tests.
 - Continue reviewing session handling and production configuration.
 - Review database SSL settings and deployment security.
-- Finish the frontend and test the complete application flow.
+- Complete frontend regression testing for document-management workflows.
+- Configure and verify persistent file storage.
 - Complete API documentation and deployment instructions.
-- Rotate the previously exposed temporary test-account password privately before the final demonstration.
+- Verify security settings in the deployed environment.
+- Rotate any previously exposed temporary test-account password privately before the final demonstration.
 
 ## 6. Conclusion
 
-Building TrustVault has helped me understand why security checks must be enforced on the server rather than relying on the user interface alone. I have implemented and tested several important protections, but there is still work to do before the application should be used for sensitive documents in production.
+Building TrustVault has helped me understand why security checks must be enforced on the server rather than relying on the user interface alone. I have implemented and tested several important protections, including authentication, document-level authorization, selected audit logging, and automated security checks.
 
-I will update this document as more features are implemented and additional security tests are completed.
+The frontend is now integrated with the backend and has been manually tested for selected workflows. However, additional testing, persistent file storage, and production deployment verification remain necessary before the application should be used for sensitive documents.
+
+This threat model will be updated as further features are implemented and additional security tests are completed.
