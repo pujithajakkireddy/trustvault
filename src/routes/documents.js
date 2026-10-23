@@ -219,7 +219,8 @@ router.get("/:id/download", requireAuth, async (req, res) => {
   }
 });
 
-// Upload a validated document and store its SHA-256 hash in PostgreSQL.
+
+ // Upload a validated document and store its SHA-256 hash in PostgreSQL.
 router.post(
   "/upload",
   requireAuth,
@@ -238,6 +239,9 @@ router.post(
       });
     }
 
+    let client;
+    let transactionStarted = false;
+
     try {
       const file = req.validatedFile;
 
@@ -246,7 +250,12 @@ router.post(
         .update(file.buffer)
         .digest("hex");
 
-      const result = await pool.query(
+      client = await pool.connect();
+
+      await client.query("BEGIN");
+      transactionStarted = true;
+
+      const result = await client.query(
         `INSERT INTO documents
            (owner_id, name, category, mime_type, size_bytes, content, sha256_hash)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -274,20 +283,34 @@ router.post(
           mimeType: file.mimeType,
         },
         outcome: "success",
+        dbClient: client,
       });
+
+      await client.query("COMMIT");
+      transactionStarted = false;
 
       return res.status(201).json({
         message: "Document uploaded successfully.",
         document: result.rows[0],
       });
     } catch (error) {
+      if (client && transactionStarted) {
+        await client.query("ROLLBACK").catch(() => {});
+      }
+
       console.error("Document upload failed:", error.message);
+
       return res.status(500).json({
         error: "Unable to save the document.",
       });
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   }
 );
+
 
 /**
  * Grant read or edit access to another existing user.
