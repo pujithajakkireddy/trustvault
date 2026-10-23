@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../db/database");
 const requireAuth = require("../middleware/require-auth");
+const csrfProtection = require("../middleware/csrf-protection");
 
 const router = express.Router();
 
@@ -151,7 +152,7 @@ router.get("/me", requireAuth, (req, res) => {
 });
 
  // Log out the current user and destroy their server-side session.
-router.post("/logout", requireAuth, (req, res, next) => {
+router.post("/logout", csrfProtection, requireAuth, (req, res, next) => {
   req.session.destroy((error) => {
     if (error) {
       console.error("Session destruction failed.");

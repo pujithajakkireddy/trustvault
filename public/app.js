@@ -13,10 +13,10 @@ async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   const method = (options.method || "GET").toUpperCase();
 
-  if (
+    if (
     csrfToken &&
     ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-    path.startsWith("/api/documents")
+    path.startsWith("/api/")
   ) {
     headers.set("X-CSRF-Token", csrfToken);
   }
