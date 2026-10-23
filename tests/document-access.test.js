@@ -111,6 +111,17 @@ test("document access respects ownership, grants, and revocation", async (t) => 
       );
       assert.equal(response.status, 404);
     });
+    await t.test("granting permission rejects a missing CSRF token", async () => {
+      const response = await ownerAgent
+        .put(`/api/documents/${documentId}/permissions`)
+        .send({
+          userId: viewerId,
+          canRead: true,
+          canEdit: false,
+         });
+
+      assert.equal(response.status, 403);
+    });
 
     await t.test("owner can grant read access", async () => {
       const response = await ownerAgent
@@ -133,6 +144,13 @@ test("document access respects ownership, grants, and revocation", async (t) => 
       assert.equal(response.status, 200);
       assert.equal(response.headers["x-content-type-options"], "nosniff");
       assert.equal(response.body.toString(), "%PDF-1.4");
+    });
+
+    await t.test("revoking permission rejects a missing CSRF token", async () => {
+      const response = await ownerAgent
+        .delete(`/api/documents/${documentId}/permissions/${viewerId}`);
+
+      assert.equal(response.status, 403);
     });
 
     await t.test("owner can revoke read access", async () => {

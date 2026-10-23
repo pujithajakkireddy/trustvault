@@ -136,7 +136,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 
 **Mistakes and corrections:** The first integration run had two failures caused by comparing PostgreSQL UUID values with text values in cleanup queries. Added explicit `::uuid` and `::text` casts. The subsequent integration run passed all 16 tests.
 
-**Limitations and next work:** The new edit route updates metadata only; it does not replace document file contents. The passing tests cover these specific cases and do not establish complete application security. Search/filtering, administrative activity and permission views, frontend completion, CSRF protection, logout, and further security testing remain to be addressed. The temporary test-account password must be rotated privately before the final demonstration.
+**Limitations and next work:** The edit route updates document metadata only; it does not replace the uploaded file contents. At the time of this entry, search, logout, CSRF protection, administrative routes, and further security tests were still pending. These features were developed and tested in later entries. The frontend, broader security testing, and remaining challenge requirements still need attention. The temporary test-account password must be rotated privately before the final demonstration.
 
 ### Entry 7 - 2026-10-21: Document Search and Privacy Verification
 
@@ -159,7 +159,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 
 **Learning:** Search results must be filtered by authorization in the server-side database query, not merely hidden in the user interface. Testing an exact-name search for a private document helps detect accidental information disclosure.
 
-**Limitations and next work:** These tests verify the specific search and access-control cases listed above; they do not establish complete application security. Continue with valid owner/date filter coverage, administrative activity and permission views, frontend completion, CSRF protection, logout, and further security testing. Rotate the previously exposed temporary test-account password privately before the final demonstration.
+**Limitations and next work:** These tests cover the specific search and access-control cases described above. At the time of this entry, logout, CSRF protection, and administrative routes were still pending; later entries record work on these features. Additional valid owner/date filter tests, broader security testing, frontend completion, and the remaining challenge requirements still need attention. Rotate the previously exposed temporary test-account password privately before the final demonstration.
 
 ### Entry 8 - 2026-10-21: Logout and Session Invalidation
 
@@ -245,3 +245,36 @@ This file records the AI assistance used while developing TrustVault. Entries de
 - Continue expanding security tests and rotate the previously exposed temporary test-account password privately before the final demonstration.
 
 **AI assistance disclosure:** AI assistance was used to guide database connectivity troubleshooting, review the audit-log correction, interpret test output, and update project documentation. Implementation and verification claims should reflect only changes and tests actually performed.
+
+---
+
+## Entry 12 — 2026-10-23: Admin Audit Endpoint and Security Testing
+
+**Prompt/task:** Add an administrator-only endpoint to view audit records and verify that unauthorized users cannot access it. Also improve CSRF testing for document permission changes.
+
+**AI assistance used:** Used AI guidance to create the admin route, connect it to the existing role middleware, add input validation, and write automated security tests.
+
+**Implementation completed:**
+
+- Created `src/routes/admin.js` with `GET /api/admin/audit-logs`.
+- Restricted audit-log access to users with the `admin` role.
+- Added validation for the `limit` query parameter, allowing integers from 1 to 100.
+- Included actor and target-user details in the audit response where available.
+- Connected the admin router in `src/server.js`.
+- Created `tests/admin-audit.test.js` for admin access-control testing.
+- Created `tests/csrf-protection.test.js` to test the CSRF middleware.
+- Added integration tests to check that permission grants and revocations reject missing CSRF tokens.
+
+**Verification performed:**
+
+- `node --check src/routes/admin.js` — passed.
+- `node --check src/server.js` — passed.
+- `node --test tests/admin-audit.test.js` — 6 tests passed, 0 failed.
+- `npm test` with `NODE_ENV=test` — 45 tests passed, 0 failed, 0 skipped.
+- The latest full test run completed in approximately 99 seconds.
+
+**Mistakes and corrections:** No confirmed implementation error remained after the final tests. The PostgreSQL SSL-mode compatibility warning still appears during testing and requires further review.
+
+**Limitations and next work:** The admin audit endpoint is implemented, but a complete administrative user interface is not yet verified. Broader CSRF protection, additional audit coverage, frontend completion, deployment configuration, and further security testing are still needed.
+
+**AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, security test development, and documentation. The results recorded here reflect the implementation and tests actually completed.

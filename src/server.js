@@ -11,15 +11,24 @@ const multer = require("multer");
 const pool = require("./db/database");
 
 pool.on("error", (error) => {
-  console.error("Unexpected idle database connection error:", error.message);
+  console.error(
+    "Unexpected idle database connection error:",
+    error.message
+  );
 });
 
 const authRoutes = require("./routes/auth");
 const documentRoutes = require("./routes/documents");
+const adminRoutes = require("./routes/admin");
 const csrfProtection = require("./middleware/csrf-protection");
 
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-  throw new Error("SESSION_SECRET must contain at least 32 characters.");
+if (
+  !process.env.SESSION_SECRET ||
+  process.env.SESSION_SECRET.length < 32
+) {
+  throw new Error(
+    "SESSION_SECRET must contain at least 32 characters."
+  );
 }
 
 const app = express();
@@ -83,7 +92,9 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { error: "Too many login attempts. Try again later." },
+  message: {
+    error: "Too many login attempts. Try again later.",
+  },
 });
 
 app.get("/", (req, res) => {
@@ -99,6 +110,7 @@ app.use(
     if (req.path === "/login") {
       return loginLimiter(req, res, next);
     }
+
     next();
   },
   authRoutes
@@ -107,13 +119,22 @@ app.use(
 app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-    res.status(200).json({ status: "ok", database: "connected" });
+    res.status(200).json({
+      status: "ok",
+      database: "connected",
+    });
   } catch {
-    res.status(503).json({ status: "error", database: "unavailable" });
+    res.status(503).json({
+      status: "error",
+      database: "unavailable",
+    });
   }
 });
 
 app.use("/api/documents", csrfProtection, documentRoutes);
+
+// Administrator-only routes, including audit history.
+app.use("/api/admin", adminRoutes);
 
 // Centralized error handling for upload and other request errors.
 // Keep this after the routes so errors can reach this middleware.
