@@ -166,7 +166,7 @@ A PostgreSQL SSL-mode compatibility warning has appeared during testing. It did 
 
 These results apply only to the scenarios exercised by the tests. They are not a complete security audit and do not guarantee production readiness.
 
-## 5. Remaining Work
+## 5. Residual Risks and Future Improvements
 
 The main security tasks still to address are:
 
