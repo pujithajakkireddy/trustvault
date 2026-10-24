@@ -59,38 +59,42 @@ The frontend has been connected to the Express server and manually tested for re
 
 ```text
 trustvault/
-├── src/
-│   ├── db/
-│   │   ├── database.js
-│   │   ├── schema.sql
-│   │   └── apply-schema.js
-│   ├── middleware/
-│   │   ├── require-auth.js
-│   │   ├── require-role.js
-│   │   ├── csrf-protection.js
-│   │   └── upload.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   ├── documents.js
-│   │   └── admin.js
-│   ├── services/
-│   │   └── audit.js
-│   └── server.js
-├── tests/
-│   ├── document-access.test.js
-│   ├── admin-audit.test.js
-│   └── csrf-protection.test.js
-├── public/
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── docs/
-├── .env.example
-├── .gitignore
-├── package.json
-├── README.md
-├── THREATS.md
-└── PROMPTS.md
+|-- src/
+|   |-- db/
+|   |   |-- database.js
+|   |   |-- schema.sql
+|   |   |-- apply-schema.js
+|   |   `-- check-connection.js
+|   |-- middleware/
+|   |   |-- require-auth.js
+|   |   |-- require-role.js
+|   |   |-- csrf-protection.js
+|   |   `-- upload.js
+|   |-- routes/
+|   |   |-- auth.js
+|   |   |-- documents.js
+|   |   `-- admin.js
+|   |-- services/
+|   |   `-- audit.js
+|   `-- server.js
+|-- tests/
+|   |-- admin-audit.test.js
+|   |-- auth-middleware.test.js
+|   |-- csrf-protection.test.js
+|   |-- document-access.test.js
+|   |-- role-middleware.test.js
+|   `-- run-mutation-check.js
+|-- public/
+|   |-- index.html
+|   |-- styles.css
+|   `-- app.js
+|-- docs/
+|-- .gitignore
+|-- package.json
+|-- package-lock.json
+|-- README.md
+|-- THREATS.md
+`-- PROMPTS.md
 ```
 
 This structure reflects the expected project layout. Check it against the repository before submission and update any paths if the actual structure differs.
@@ -186,7 +190,7 @@ Make sure the test database is configured and reachable before running tests tha
 
 The latest recorded full test run reported:
 
-- **Passed:** 45
+- **Passed:** 46
 - **Failed:** 0
 - **Skipped:** 0
 
