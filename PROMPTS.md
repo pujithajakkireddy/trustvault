@@ -76,7 +76,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 
 **Limitations at this stage:** Document-level authorization, administrative endpoints, permission grants and revocation, audit logging, and automated security tests remain outstanding. The role middleware checks the role stored in the session; role-change handling and fresh database-backed role verification still need consideration before using it for sensitive operations.
 
-### Entry 4 — 2026-10-20: Document Listing and Authentication Verification
+### Entry 4 - 2026-10-20: Document Listing and Authentication Verification
 
 **AI assistance used:** Connected the document-listing router to the Express server and prepared PowerShell commands to verify authenticated and unauthenticated access.
 
@@ -181,7 +181,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 
 **Limitations and next work:** Logout behavior passed the tested scenario; additional session lifecycle and error-path tests may still be useful. CSRF protection for cookie-authenticated state-changing requests remains unfinished and must be implemented and tested. The PostgreSQL SSL-mode compatibility warning also remains under review.
 
-### Entry 9 — 2026-10-21 — CSRF Protection and Integration Regression Tests
+### Entry 9 - 2026-10-21 - CSRF Protection and Integration Regression Tests
 
 **Goal:** Verify that document editing rejects missing or invalid CSRF tokens and that existing document authorization, search, deletion, and logout protections continue to work.
 
@@ -197,7 +197,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 
 **Limitations:** These results cover the tested scenarios only. Broader CSRF coverage, upload validation, complete audit-event coverage, and other remaining security checks still require verification.
 
-### Entry 10 — Upload Validation and Integration Regression Verification
+### Entry 10 - Upload Validation and Integration Regression Verification
 
 **Date:** 2026-10-21
 
@@ -270,7 +270,7 @@ This file records the AI assistance used while developing TrustVault. Entries de
 - `node --check src/routes/admin.js` — passed.
 - `node --check src/server.js` — passed.
 - `node --test tests/admin-audit.test.js` — 6 tests passed, 0 failed.
-- `npm test` with `NODE_ENV=test` — 45 tests passed, 0 failed, 0 skipped.
+- `npm test` with `NODE_ENV=test` — 46 tests passed, 0 failed, 0 skipped.
 - The latest full test run completed in approximately 99 seconds.
 
 **Mistakes and corrections:** No confirmed implementation error remained after the final tests. The PostgreSQL SSL-mode compatibility warning still appears during testing and requires further review.
@@ -308,3 +308,29 @@ This file records the AI assistance used while developing TrustVault. Entries de
 - Update the documentation after deployment has been verified.
 
 **AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, testing instructions, and documentation. The recorded verification results reflect the checks performed during development.
+
+## Entry 14 - 2026-10-24: Document Integrity, Audit Consistency, and Submission Documentation
+
+**Objective:** Improve document-integrity verification, keep document uploads and their audit entries consistent, and prepare the project documentation for submission.
+
+**AI assistance used:** Used AI guidance to review the implementation, interpret test output, check the project structure, and identify documentation inconsistencies.
+
+**Implementation and documentation work:**
+- Added SHA-256 hash calculation and verification for uploaded document content.
+- Updated document-download handling to detect content whose hash does not match the recorded value.
+- Updated document upload and audit logging to use a database transaction so that the upload and its associated audit entry are committed together.
+- Updated `README.md` to reflect the actual project structure and latest verified test count.
+- Updated `THREATS.md` to describe implemented controls, test coverage, and remaining security limitations accurately.
+
+**Verification performed:**
+- The latest recorded full test run passed 46 tests, with 0 failures and 0 skipped tests.
+- Reviewed the Git working tree and project structure.
+- Confirmed that `.env` is ignored by Git and that `git log --all --oneline -- .env` returned no commits referencing that path.
+
+**Remaining limitations:**
+- The tests do not constitute a complete security audit.
+- File-signature checks do not provide malware scanning or complete file-format validation.
+- Uploaded file content uses in-memory storage and is not guaranteed to persist across process restarts.
+- Audit-log coverage and immutability, production deployment settings, and database SSL configuration still require review.
+
+**AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, testing instructions, and documentation review. The recorded results reflect the checks performed during development.
