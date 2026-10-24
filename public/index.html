@@ -1,78 +1,113 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta
-    name="description"
-    content="TrustVault — secure document sharing with access control and an audit trail."
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="TrustVault — secure document sharing with access control and an audit trail.">
+  <meta name="theme-color" content="#0b1020">
   <title>TrustVault | Secure Document Sharing</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">
+    <a class="brand" href="/" aria-label="TrustVault home">
       <span class="brand-mark">T</span>
       <span>TrustVault</span>
     </a>
-    <span class="security-label">Secure Document Workspace</span>
+    <span class="security-label">
+      <span class="status-dot"></span>
+      Secure document workspace
+    </span>
   </header>
 
   <main class="container">
     <section class="hero">
-      <p class="eyebrow">DOCUMENT ACCESS & AUDIT PLATFORM</p>
+      <p class="eyebrow">DOCUMENT ACCESS &amp; AUDIT PLATFORM</p>
       <h1>Your documents.<br><span>Your control.</span></h1>
       <p class="hero-description">
-        Securely share, manage, and track document access from one workspace.
+        One secure workspace to organize files, grant precise access,
+        and keep document activity accountable.
       </p>
+      <div class="hero-points">
+        <span>✓ Private by default</span>
+        <span>✓ Permission-based sharing</span>
+        <span>✓ Auditable activity</span>
+      </div>
     </section>
 
-    <section id="notice" class="notice" role="status" aria-live="polite" hidden></section>
+    <section id="notice" class="notice"
+      role="status" aria-live="polite" hidden></section>
 
     <section id="auth-section" class="auth-layout">
       <div class="panel intro-panel">
         <p class="eyebrow">BUILT FOR TRUST</p>
-        <h2>Keep important files protected.</h2>
+        <h2>Important files deserve thoughtful protection.</h2>
         <p>
-          Sign in to manage your documents, control access permissions,
-          and review activity according to your role.
+          Keep your documents in one place, decide who can read or edit
+          them, and make access decisions traceable.
         </p>
-        <ul class="feature-list">
-          <li>Private document access</li>
-          <li>Role-based permissions</li>
-          <li>Auditable document activity</li>
-        </ul>
+
+        <div class="security-feature">
+          <span class="feature-icon">◈</span>
+          <div>
+            <strong>Access that stays intentional</strong>
+            <p>
+              New accounts start with viewer access. Document permissions
+              are managed separately.
+            </p>
+          </div>
+        </div>
+
+        <div class="security-feature">
+          <span class="feature-icon">⌁</span>
+          <div>
+            <strong>Activity with accountability</strong>
+            <p>
+              Relevant actions are recorded for review by authorized
+              administrators.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="panel auth-panel">
         <div class="tabs" role="tablist" aria-label="Account options">
           <button id="login-tab" class="tab active" type="button"
-            role="tab" aria-selected="true">Sign in</button>
+            role="tab" aria-controls="login-form" aria-selected="true">
+            Sign in
+          </button>
           <button id="register-tab" class="tab" type="button"
-            role="tab" aria-selected="false">Create account</button>
+            role="tab" aria-controls="register-form" aria-selected="false">
+            Create account
+          </button>
         </div>
 
         <form id="login-form">
           <h2>Welcome back</h2>
-          <p class="muted">Sign in to your TrustVault workspace.</p>
+          <p class="muted form-intro">
+            Sign in to your TrustVault workspace.
+          </p>
 
           <label for="login-email">Email address</label>
           <input id="login-email" name="email" type="email"
-            autocomplete="email" required>
+            autocomplete="username" required>
 
           <label for="login-password">Password</label>
           <input id="login-password" name="password" type="password"
             autocomplete="current-password" required>
 
-          <button class="button primary full" type="submit">Sign in</button>
+          <button class="button primary full" type="submit">
+            Sign in <span aria-hidden="true">→</span>
+          </button>
         </form>
 
         <form id="register-form" hidden>
           <h2>Create your account</h2>
-          <p class="muted">Register for a TrustVault workspace.</p>
+          <p class="muted form-intro">
+            Set up your secure workspace.
+          </p>
 
           <label for="register-name">Full name</label>
           <input id="register-name" name="name" type="text"
@@ -86,10 +121,14 @@
           <input id="register-password" name="password" type="password"
             autocomplete="new-password" minlength="12" maxlength="72"
             required>
-          <p class="hint">Use a password of at least 12 characters.</p>
+
+          <p class="hint">
+            Use at least 12 characters. New accounts receive viewer role
+            by design.
+          </p>
 
           <button class="button primary full" type="submit">
-            Create account
+            Create account <span aria-hidden="true">→</span>
           </button>
         </form>
       </div>
@@ -102,81 +141,144 @@
           <h2>Document library</h2>
           <p id="user-summary" class="muted"></p>
         </div>
+
         <button id="logout-button" class="button secondary" type="button">
-          Sign out
+          Sign out ↗
         </button>
       </div>
 
+      <div class="stats-grid" aria-label="Document overview">
+        <article class="stat-card">
+          <span class="stat-icon">▤</span>
+          <div>
+            <p class="stat-label">Accessible documents</p>
+            <strong id="stat-total">—</strong>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <span class="stat-icon">♙</span>
+          <div>
+            <p class="stat-label">Owned by you</p>
+            <strong id="stat-owned">—</strong>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <span class="stat-icon">↗</span>
+          <div>
+            <p class="stat-label">Shared with you</p>
+            <strong id="stat-shared">—</strong>
+          </div>
+        </article>
+      </div>
+
       <div class="dashboard-grid">
-        <section class="panel">
-          <h3>Upload a document</h3>
-          <p class="muted">PDF, PNG, or JPEG · Maximum 5 MB</p>
+        <section class="panel tool-panel">
+          <div class="panel-heading">
+            <span class="panel-icon upload-icon">↑</span>
+            <div>
+              <h3>Upload a document</h3>
+              <p class="muted">Add a file to your private library.</p>
+            </div>
+          </div>
+
           <form id="upload-form">
             <label for="document-file">Choose file</label>
             <input id="document-file" name="file" type="file"
               accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
               required>
 
+            <p class="hint">PDF, PNG or JPEG · Maximum 5 MB</p>
+
             <label for="document-category">Category</label>
             <input id="document-category" name="category" type="text"
-              maxlength="100" placeholder="e.g. Academic" required>
+              maxlength="100" placeholder="e.g. Academic, Identity" required>
 
             <button class="button primary full" type="submit">
-              Upload document
+              Upload document <span aria-hidden="true">↑</span>
             </button>
           </form>
         </section>
 
-        <section class="panel">
-          <h3>Find documents</h3>
-          <p class="muted">Search the documents you are allowed to access.</p>
+        <section class="panel tool-panel">
+          <div class="panel-heading">
+            <span class="panel-icon search-icon">⌕</span>
+            <div>
+              <h3>Find documents</h3>
+              <p class="muted">
+                Search only files your account can access.
+              </p>
+            </div>
+          </div>
+
           <form id="search-form">
             <label for="search-name">Document name</label>
-            <input id="search-name" name="name" type="text"
+            <input id="search-name" name="name" type="search"
               placeholder="Search by name">
 
             <label for="search-category">Category</label>
-            <input id="search-category" name="category" type="text"
+            <input id="search-category" name="category" type="search"
               placeholder="Search by category">
 
-            <button class="button secondary full" type="submit">
-              Search documents
-            </button>
+            <div class="inline-actions">
+              <button class="button primary" type="submit">Search</button>
+              <button id="clear-search" class="button ghost" type="button">
+                Clear filters
+              </button>
+            </div>
           </form>
-          <button id="clear-search" class="text-button" type="button">
-            Clear search
-          </button>
         </section>
       </div>
 
       <section class="panel documents-panel">
         <div class="section-heading">
           <div>
-            <h3>Your accessible documents</h3>
-            <p class="muted">Only documents permitted for your account are shown.</p>
+            <p class="eyebrow">YOUR FILES</p>
+            <h3>Accessible documents</h3>
+            <p class="muted">
+              Actions appear according to document ownership and
+              granted permissions.
+            </p>
           </div>
+
           <button id="refresh-button" class="button secondary" type="button">
-            Refresh
+            ↻ Refresh
           </button>
         </div>
+
+        <div id="active-filter" class="active-filter" hidden></div>
+
         <div id="document-list" class="document-list">
-          <p class="muted">Sign in to load documents.</p>
+          <p class="muted">Loading your documents…</p>
         </div>
       </section>
 
-      <section id="admin-section" class="panel" hidden>
-        <h3>Administrator audit log</h3>
-        <p class="muted">Recent recorded activity. Visible to administrators only.</p>
-        <button id="audit-button" class="button secondary" type="button">
-          Load audit log
-        </button>
+      <section id="admin-section" class="panel admin-panel" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">GOVERNANCE</p>
+            <h3>Administrator audit log</h3>
+            <p class="muted">
+              Recent recorded activity. Available to administrators only.
+            </p>
+          </div>
+
+          <button id="audit-button" class="button secondary" type="button">
+            Load activity
+          </button>
+        </div>
+
         <div id="audit-list" class="audit-list"></div>
       </section>
     </section>
 
     <footer>
-      <span>TrustVault</span>
+      <a class="footer-brand" href="/">TrustVault</a>
       <span>Secure access. Accountable sharing.</span>
+      <span class="footer-note">
+        Protecting every document, one permission at a time.
+      </span>
     </footer>
   </main>
 </body>
