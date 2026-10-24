@@ -330,31 +330,45 @@ This file records the AI assistance used while developing TrustVault. Entries de
 **Remaining limitations:**
 - The tests do not constitute a complete security audit.
 - File-signature checks do not provide malware scanning or complete file-format validation.
-- Uploaded file content uses in-memory storage and is not guaranteed to persist across process restarts.
+-Uploaded file content is buffered in memory during upload and then stored in PostgreSQL documents.content (BYTEA). Persistence across a Render restart has not yet been independently verified.
 - Audit-log coverage and immutability, production deployment settings, and database SSL configuration still require review.
 
 **AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, testing instructions, and documentation review. The recorded results reflect the checks performed during development.
 
-## Entry 15 — 2026-10-24: Deployment and Final Verification
+## Entry 15 - 2026-10-24: Deployment, Security Review, and Final Submission Preparation
 
-**Objective:** Verify the deployed TrustVault application, document-sharing workflows, administrator audit logs, role-based access control, and automated test results before submission.
+**Objective:** Verify the deployed TrustVault application, review document-sharing and administrator access controls, confirm automated test results, and prepare accurate project documentation for submission.
 
-**AI assistance used:** Used AI guidance to inspect project configuration, review authorization middleware and authentication logic, interpret browser-console results, verify deployment status, and prepare the final submission checklist.
+**AI assistance used:** Used AI guidance to inspect project configuration, review authorization middleware and authentication logic, interpret test output, review audit logging and CSRF coverage, and prepare final submission documentation.
 
 **Verification performed:**
 
-- Confirmed the local Git working tree was clean and the `main` branch was up to date with `origin/main`.
-- Confirmed Render reported a successful live deployment for commit `4bdd3e1`, `Fix email-based document sharing`.
+- Confirmed the local Git branch was `main` and was up to date with `origin/main` before the latest local documentation changes.
+- Previously confirmed that Render reported a successful deployment for commit `4bdd3e1`, `Fix email-based document sharing`.
 - Verified that the administrator account could access the audit-log interface.
 - Verified that the viewer account could not access the administrator audit endpoint; the request returned HTTP 403 Forbidden.
-- Ran `npm test` with `NODE_ENV=test`: 46 tests passed, 0 failed, and 0 skipped.
-- Observed a PostgreSQL SSL-mode compatibility warning during testing; the warning remains to be reviewed.
+- Ran `$env:NODE_ENV = "test"; npm test`.
+- Latest confirmed test result: **46 tests passed, 0 failed, 0 skipped**.
+- Reviewed audit logging for document uploads, downloads, integrity-check failures, permission grants, permission revocations, deletion, and metadata updates.
+- Corrected the denied-download audit test to identify the requested document through `details.requestedDocumentId`, consistent with the implementation that avoids storing an inaccessible or nonexistent document ID in the audit table's document foreign-key field.
+- Confirmed that `.env` is ignored by Git and that neither `.env` nor `.env.example` was tracked at the time of checking.
+- Created `.env.example` with placeholder configuration values for local development and test database setup.
+
+**Storage and implementation notes:**
+
+- Uploaded file content is buffered in memory during upload and then stored in PostgreSQL `documents.content` (`BYTEA`), with a SHA-256 hash used for integrity verification.
+- Persistence across a Render restart has not yet been independently verified.
+- The session cookie is configured with `httpOnly`, `sameSite: "lax"`, and `secure` enabled in production.
+- The Express application configures `trust proxy` to `1` in production.
+- The document router is mounted with CSRF protection. The admin router currently exposes a GET-only audit-log endpoint protected by administrator-role middleware.
 
 **Remaining limitations and work:**
 
-- Uploaded files use in-memory storage and are not guaranteed to persist across application restarts.
-- Review PostgreSQL SSL configuration and production session, HTTPS, and proxy settings.
-- Continue reviewing CSRF coverage, audit-log completeness, file validation, and production security.
-- Confirm that README.md, THREATS.md, and PROMPTS.md accurately describe the final implementation and verification results.
+- Verify document persistence after a Render restart.
+- Complete a final review of CSRF coverage and audit logging for denied permission operations and other failure paths.
+- Review the PostgreSQL SSL-mode compatibility warning that appears during testing. The warning has not caused the latest test run to fail, but the configuration has not yet been changed or independently resolved.
+- Verify the deployed application's cookie settings and end-to-end document-sharing workflows before the demonstration.
+- Confirm that `README.md`, `THREATS.md`, and `PROMPTS.md` accurately describe the final implementation and verification results.
+- Review the final Git diff, commit the intended documentation and test changes, push them to GitHub, and confirm the resulting deployment before submission.
 
-**AI assistance disclosure:** AI assistance was used for debugging, verification guidance, and documentation preparation. Results recorded in this entry reflect the checks performed during development and deployment.
+**AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, security-review guidance, test interpretation, and documentation preparation. The recorded verification results reflect the checks actually performed; outstanding items are explicitly identified rather than described as completed.

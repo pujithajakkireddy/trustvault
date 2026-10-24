@@ -124,13 +124,15 @@ The main assets that need protection are:
 
 ### T11. Loss of Uploaded Files
 
-**Threat:** Uploaded documents may be lost when an application process restarts or when a hosting platform replaces its temporary filesystem.
+**Threat:** Uploaded documents may become unavailable if file contents are stored only in temporary application memory or if the database loses data.
 
-**Current implementation:** The upload middleware uses Multer with in-memory storage. Uploaded file contents are not guaranteed to persist across process restarts.
+**Current implementation:** Multer uses in-memory storage to buffer incoming uploads. After validation, the upload route stores the document bytes in PostgreSQL in the `documents.content` column and stores a SHA-256 hash alongside the content.
 
-**Required mitigation:** Configure suitable persistent file storage before production use. Verify that uploaded documents remain available after application restarts and that only authorized users can retrieve them. Avoid exposing private documents through unrestricted public URLs.
+**Verification:** The upload and download code paths confirm that document bytes are written to and retrieved from PostgreSQL. Downloads recalculate the SHA-256 hash and reject files whose stored content does not match the recorded hash. Persistence across an actual Render restart or redeployment has not yet been independently verified.
 
-**Remaining risk:** Persistent file storage has not yet been configured or verified in a production deployment.
+**Required mitigation:** Verify document retrieval after an application restart or redeployment. Configure suitable database backups and recovery procedures, and confirm that the database retains document content.
+
+**Remaining risk:** Database availability, backup and recovery, and persistence across deployment events still require verification. The current implementation should not be treated as a substitute for a tested backup strategy.
 
 ### T12. Production Deployment Misconfiguration
 
@@ -142,7 +144,7 @@ The main assets that need protection are:
 
 **Required mitigation:** Verify HTTPS, secure session-cookie settings, trusted proxy configuration, environment-secret handling, database SSL settings, and authentication and authorization behavior in the deployed environment.
 
-**Remaining risk:** Production configuration review is incomplete. Uploaded files use Multer in-memory storage and are not guaranteed to persist across process restarts. Do not use the application to store sensitive production documents until persistent storage and the remaining security controls have been reviewed and verified.
+**Remaining risk:** Production configuration review is incomplete. Uploaded files are buffered in memory during upload and stored in PostgreSQL after validation, but persistence across actual process restarts or redeployments has not yet been independently verified. Database backup and recovery procedures, production security settings, and the remaining security controls must be reviewed and verified before storing sensitive production documents.
 
 ## 4. Security Verification Record
 

@@ -2,13 +2,15 @@
 
 ### Secure Document Sharing with a Real Audit Trail
 
-TrustVault is a secure document-sharing application developed for the **Snovasys Fresher Hiring Challenge 2026**. Its goal is to help users share documents securely through server-side access controls while maintaining audit records of selected important actions.
+TrustVault is a secure document-sharing application developed for the **Snovasys Fresher Hiring Challenge 2026**. It helps users share documents through server-side access controls while maintaining audit records of selected important actions.
 
-The application uses Node.js, Express, and PostgreSQL. It includes authentication, document-level permissions, document upload and download, access-controlled search, selected audit logging, and a web interface.
+The application uses Node.js, Express, and PostgreSQL. It includes authentication, document-level permissions, document upload and download, access-controlled search, selected audit logging, document-integrity verification, and a web interface.
 
 ## Project Status
 
-The core backend features, frontend integration, and security tests have been implemented. TrustVault has been deployed to Render and verified through selected application workflows and access-control checks. The project remains a working prototype: additional security testing, production configuration review, and persistent file storage are required before it should be used for sensitive documents.
+The core backend features, frontend integration, and security tests have been implemented. TrustVault has been deployed to Render and verified through selected application workflows and access-control checks.
+
+The project remains a working prototype. Additional security testing, production configuration review, and verification of database persistence, backup, and recovery are required before it should be used for sensitive documents.
 
 ### Implemented Features
 
@@ -23,6 +25,7 @@ The core backend features, frontend integration, and security tests have been im
 - Routes to grant and revoke document permissions.
 - Document download, metadata editing, and owner-restricted deletion.
 - Document search and filtering with server-side access checks.
+- SHA-256 integrity verification during document downloads.
 - Audit logging for selected document operations.
 - CSRF-token validation for protected document operations.
 - An admin-only audit-log API endpoint.
@@ -36,12 +39,13 @@ The frontend has been connected to the Express server and manually tested for re
 - Complete frontend regression testing and verify all user workflows.
 - Review CSRF protection across all relevant state-changing routes.
 - Expand audit logging and verify coverage for successful actions, denied requests, and failures.
+- Review audit-log immutability and protection against modification or deletion.
 - Add more tests for malformed files and authorization edge cases.
 - Complete API documentation and deployment instructions.
 - Review production configuration, HTTPS and proxy settings, and the PostgreSQL SSL-mode warning.
-- Configure persistent file storage before production use.
+- Verify document persistence across a Render restart or redeployment.
+- Confirm database backup and recovery procedures.
 - Continue verifying application behavior and security settings in the deployed Render environment.
-- Configure and verify persistent file storage before production use; uploaded files currently use in-memory storage.
 
 ## Technology Stack
 
@@ -51,7 +55,7 @@ The frontend has been connected to the Express server and manually tested for re
 - **Authentication:** bcrypt password hashing and server-side sessions
 - **Session Storage:** PostgreSQL using `connect-pg-simple`
 - **Security:** Helmet, login rate limiting, and CSRF-token validation
-- **File Uploads:** Multer with in-memory storage
+- **File Uploads:** Multer in-memory buffering, PostgreSQL `BYTEA` document storage, and SHA-256 integrity verification
 - **Frontend:** HTML, CSS, and JavaScript
 - **Testing:** Node.js test runner and Supertest
 - **Version Control:** Git and GitHub
@@ -90,6 +94,7 @@ trustvault/
 |   |-- styles.css
 |   `-- app.js
 |-- docs/
+|-- .env.example
 |-- .gitignore
 |-- package.json
 |-- package-lock.json
@@ -98,14 +103,14 @@ trustvault/
 `-- PROMPTS.md
 ```
 
-This structure reflects the expected project layout. Check it against the repository before submission and update any paths if the actual structure differs.
+This structure describes the expected project layout. Verify it against the repository before submission and update any paths if the actual structure differs.
 
 ## Prerequisites
 
 - Node.js and npm installed.
 - Access to a PostgreSQL database.
-- Environment variables configured in a local `.env` file.
 - Git, if cloning the repository.
+- Environment variables configured in a local `.env` file.
 
 ## Running the Project Locally
 
@@ -124,11 +129,25 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a local `.env` file and configure the required variables. Set `DATABASE_URL` to your application database and use a strong, private `SESSION_SECRET`.
+Copy `.env.example` to `.env` and replace all placeholder values with your own configuration.
 
-Configure `TEST_DATABASE_URL` separately if you intend to run integration tests. Use a separate test database to avoid modifying application data during testing.
+On Windows PowerShell:
 
-Never commit the `.env` file or publish database credentials and session secrets.
+```powershell
+Copy-Item .env.example .env
+```
+
+Configure these variables:
+
+- `DATABASE_URL`: PostgreSQL connection string for the application database.
+- `SESSION_SECRET`: a private random secret containing at least 32 characters.
+- `NODE_ENV`: the runtime environment, such as `development`, `test`, or `production`.
+- `PORT`: optional local server port; the default is `3000`.
+- `TEST_DATABASE_URL`: a separate PostgreSQL database connection string for integration tests.
+
+Use a separate test database. Never point tests at production data.
+
+Never commit `.env` or publish database credentials, session secrets, or real account passwords.
 
 ### 4. Apply the database schema
 
@@ -150,7 +169,7 @@ Open the following address in your browser:
 
 `http://localhost:3000`
 
-The root URL serves the TrustVault web interface. The backend health endpoint can be checked at:
+The backend health endpoint can be checked at:
 
 `http://localhost:3000/api/health`
 
@@ -159,11 +178,12 @@ The root URL serves the TrustVault web interface. The backend health endpoint ca
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string for the application |
-| `SESSION_SECRET` | Secret used to sign session cookies |
+| `SESSION_SECRET` | Secret used to sign session cookies; must contain at least 32 characters |
 | `TEST_DATABASE_URL` | Separate PostgreSQL connection string for integration tests |
 | `NODE_ENV` | Runtime environment, such as `test` or `production` |
+| `PORT` | Optional server port; defaults to `3000` |
 
-**Security note:** Never commit `.env` or publish database credentials, session secrets, or real account passwords. Use a separate test database for tests that create or modify records.
+**Security note:** `.env.example` contains placeholders only. Replace them locally with private values. Never commit `.env` or publish database credentials, session secrets, or real account passwords.
 
 ## Testing
 
@@ -185,11 +205,11 @@ $env:NODE_ENV = "test"
 npm test
 ```
 
-Make sure the test database is configured and reachable before running tests that require PostgreSQL.
+Make sure `TEST_DATABASE_URL` is configured and the test database is reachable before running tests that require PostgreSQL.
 
 ### Latest Verified Full Test Run
 
-The latest recorded full test run reported:
+The latest confirmed full test run reported:
 
 - **Passed:** 46
 - **Failed:** 0
@@ -206,6 +226,7 @@ The tests cover selected scenarios involving:
 - Role-based access to the admin audit endpoint.
 - Audit endpoint limits and invalid query parameters.
 - Oversized uploads and unsupported file content.
+- Document-integrity failure detection.
 
 These results apply only to the scenarios covered by the tests. Passing the suite does not guarantee that every feature works in every situation or that the application has no security vulnerabilities.
 
@@ -215,14 +236,14 @@ A PostgreSQL SSL-mode compatibility warning has appeared during testing. It did 
 
 Security is a central focus of TrustVault. The application enforces authorization on the server rather than relying on the frontend to hide or restrict protected operations.
 
-The current implementation includes password hashing, server-side sessions, document ownership and permission checks, permission-filtered search, upload limits, file-signature checks, security headers, login rate limiting, CSRF-token validation on protected operations, and selected audit records.
+The current implementation includes password hashing, server-side sessions, document ownership and permission checks, permission-filtered search, upload limits, file-signature checks, security headers, login rate limiting, CSRF-token validation on protected operations, document-integrity checks, and selected audit records.
 
 The following limitations remain:
 
 - **File validation:** File-signature checks do not provide complete file-format validation. Malware scanning is not implemented.
 - **CSRF protection:** Protection requires further review across all relevant state-changing endpoints.
 - **Audit logging:** Coverage is not yet proven complete. Database audit records are not inherently immutable or tamper-proof.
-- **File storage:** Uploaded files currently use in-memory storage. Files held only in application memory are not persistent across process restarts. Production deployment requires suitable persistent storage.
+- **File storage:** Multer buffers incoming uploads in memory. After validation, document bytes are stored in PostgreSQL in the `documents.content` column (`BYTEA`), alongside a SHA-256 hash. Persistence across an actual Render restart or redeployment has not yet been independently verified. Database availability, backup, and recovery still need to be verified for production use.
 - **Production configuration:** HTTPS, proxy settings, secure session-cookie behavior, database connection security, and the PostgreSQL SSL-mode warning require review.
 - **Testing:** Automated tests cover selected scenarios, not every possible attack or failure.
 
@@ -236,7 +257,7 @@ For additional details, see [THREATS.md](THREATS.md).
 
 - **[THREATS.md](THREATS.md):** Security threats, implemented protections, test evidence, and remaining risks.
 - **[PROMPTS.md](PROMPTS.md):** A dated record of AI assistance, development tasks, implementation changes, and verification results.
-- **`src/db/schema.sql`:** Database schema, if present in the repository.
+- **`src/db/schema.sql`:** Database schema.
 - **`tests/`:** Automated tests for selected application and security behavior.
 
 ## Repository
@@ -247,10 +268,10 @@ Live Demo: https://trustvault-0law.onrender.com
 
 ## Conclusion
 
-TrustVault is a secure document-sharing application developed for the Snovasys Fresher Hiring Challenge 2026. It brings together user authentication, document-level access control, permission management, document integrity verification, selected audit logging, and a web-based interface.
+TrustVault is a secure document-sharing application developed for the Snovasys Fresher Hiring Challenge 2026. It brings together user authentication, document-level access control, permission management, document-integrity verification, selected audit logging, and a web-based interface.
 
-The implementation has been verified through automated tests covering key authorization, session, CSRF, upload-validation, search, and audit scenarios. The latest recorded full test run passed 46 tests with no failures or skipped tests.
+The implementation has been verified through automated tests covering key authorization, session, CSRF, upload-validation, search, and audit scenarios. The latest confirmed full test run passed 46 tests with no failures or skipped tests.
 
 TrustVault demonstrates the practical application of security principles such as server-side authorization, controlled document access, password hashing, session management, and integrity checking.
 
-The current implementation is a working project prototype. Persistent file storage, broader security verification, and production deployment hardening remain important before it is used to store sensitive documents in a production environment.
+The current implementation is a working project prototype. Broader security verification, confirmation of database persistence after deployment restarts, backup and recovery planning, and production deployment hardening remain important before it is used to store sensitive documents.

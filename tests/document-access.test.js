@@ -96,22 +96,45 @@ test("document access respects ownership, grants, and revocation", async (t) => 
     assert.equal(viewerLogin.status, 200, "viewer login should succeed");
 
     const ownerCsrfToken = await getCsrfToken(ownerAgent);
-
     await getCsrfToken(viewerAgent);
 
     await t.test("unauthenticated download is rejected", async () => {
       const response = await request(app).get(
         `/api/documents/${documentId}/download`
       );
+
       assert.equal(response.status, 401);
     });
 
-    await t.test("another user cannot download without permission", async () => {
-      const response = await viewerAgent.get(
-        `/api/documents/${documentId}/download`
-      );
-      assert.equal(response.status, 404);
-    });
+    await t.test(
+      "another user cannot download without permission and the denial is audited",
+      async () => {
+        const response = await viewerAgent.get(
+          `/api/documents/${documentId}/download`
+        );
+
+        assert.equal(response.status, 404);
+
+        const audit = await pool.query(
+          `SELECT action, outcome, details
+           FROM audit_logs
+           WHERE actor_id = $1
+             AND action = 'document.download'
+             AND outcome = 'denied'
+             AND details->>'requestedDocumentId' = $2::text
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [viewerId, documentId]
+        );
+
+        assert.equal(
+          audit.rows.length,
+          1,
+          "The denied download should create an audit record"
+        );
+      }
+    );
+
     await t.test("granting permission rejects a missing CSRF token", async () => {
       const response = await ownerAgent
         .put(`/api/documents/${documentId}/permissions`)
@@ -119,7 +142,7 @@ test("document access respects ownership, grants, and revocation", async (t) => 
           userId: viewerId,
           canRead: true,
           canEdit: false,
-         });
+        });
 
       assert.equal(response.status, 403);
     });
@@ -148,8 +171,9 @@ test("document access respects ownership, grants, and revocation", async (t) => 
     });
 
     await t.test("revoking permission rejects a missing CSRF token", async () => {
-      const response = await ownerAgent
-        .delete(`/api/documents/${documentId}/permissions/${viewerId}`);
+      const response = await ownerAgent.delete(
+        `/api/documents/${documentId}/permissions/${viewerId}`
+      );
 
       assert.equal(response.status, 403);
     });
@@ -166,6 +190,7 @@ test("document access respects ownership, grants, and revocation", async (t) => 
       const response = await viewerAgent.get(
         `/api/documents/${documentId}/download`
       );
+
       assert.equal(response.status, 404);
     });
   } finally {
@@ -392,7 +417,6 @@ test("document editing requires ownership or explicit edit permission", async (t
     const editorCsrfToken = await getCsrfToken(editorAgent);
     const viewerCsrfToken = await getCsrfToken(viewerAgent);
 
-    // CSRF protection tests
     await t.test("missing CSRF token is rejected", async () => {
       const response = await viewerAgent
         .patch(`/api/documents/${documentId}`)
@@ -768,8 +792,10 @@ test("document uploads reject oversized and invalid files", async (t) => {
     }
   }
 });
+
 test("document download detects SHA-256 integrity failures", async () => {
-    await app.locals.resetLoginLimiter?.();
+  await app.locals.resetLoginLimiter?.();
+
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const email = `tv-integrity-${suffix}@example.test`;
   const password = `Integrity-${suffix}-Pass!`;
@@ -855,6 +881,7 @@ test("document download detects SHA-256 integrity failures", async () => {
     }
   }
 });
+
 test.after(async () => {
   await pool.end();
 });
