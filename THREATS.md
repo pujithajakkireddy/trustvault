@@ -108,7 +108,7 @@ The main assets that need protection are:
 
 **Implemented controls:** Automated tests cover selected document-access, permission, search, audit, session, CSRF, upload-validation, and admin-access scenarios.
 
-**Verification:** A previous mutation test showed that the unauthorized-download and revoked-permission tests failed when the relevant authorization condition was deliberately removed. The latest recorded full test run passed 45 tests with no failures or skipped tests.
+**Verification:** A previous mutation test showed that the unauthorized-download and revoked-permission tests failed when the relevant authorization condition was deliberately removed. The latest recorded full test run passed 46 tests, with no failures or skipped tests. These results apply only to the scenarios exercised by the test suite and do not constitute a complete security audit.
 
 **Remaining risk:** The mutation test checks one specific regression. More security tests and code reviews are needed to cover other possible failures.
 
@@ -146,7 +146,7 @@ The main assets that need protection are:
 
 The latest recorded full test run reported:
 
-- **Tests passed:** 45
+- **Tests passed:** 46
 - **Tests failed:** 0
 - **Tests skipped:** 0
 
@@ -170,7 +170,7 @@ These results apply only to the scenarios exercised by the tests. They are not a
 
 The main security tasks still to address are:
 
-- Review CSRF protection across relevant state-changing routes, including logout.
+- Continue reviewing CSRF protection across relevant state-changing routes and add regression tests where coverage is incomplete.
 - Expand audit coverage for successful actions, denied requests, and failures.
 - Add more authorization regression tests and malformed-file tests.
 - Continue reviewing session handling and production configuration.
