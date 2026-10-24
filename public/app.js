@@ -1,4 +1,3 @@
-
 "use strict";
 
 const $ = (id) => document.getElementById(id);
@@ -15,15 +14,32 @@ let activeFilters = {};
 let cachedDocuments = [];
 let noticeTimer = null;
 
-async function api(path, options = {}) {
-  const headers = new Headers(options.headers || {});
-  const method = (options.method || "GET").toUpperCase();
+const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (
-    csrfToken &&
-    ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-    path.startsWith("/api/")
-  ) {
+async function api(path, options = {}, retryCsrf = true) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers || {});
+  const isMutation =
+    MUTATING_METHODS.includes(method) && path.startsWith("/api/");
+
+  if (isMutation) {
+    const tokenResponse = await fetch("/api/auth/csrf-token", {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store"
+    });
+
+    const tokenData = await tokenResponse.json().catch(() => ({}));
+
+    if (!tokenResponse.ok || !tokenData.csrfToken) {
+      throw new Error(
+        "Unable to obtain a CSRF token. Please sign in again."
+      );
+    }
+
+    csrfToken = tokenData.csrfToken;
     headers.set("X-CSRF-Token", csrfToken);
   }
 
@@ -39,10 +55,18 @@ async function api(path, options = {}) {
     ? await response.json()
     : null;
 
+  const message = data?.error || data?.message || "";
+
+  if (
+    response.status === 403 &&
+    retryCsrf &&
+    /csrf/i.test(message)
+  ) {
+    return api(path, options, false);
+  }
+
   if (!response.ok) {
-    throw new Error(
-      data?.error || data?.message || `Request failed (${response.status})`
-    );
+    throw new Error(message || `Request failed (${response.status})`);
   }
 
   return data;
@@ -74,7 +98,6 @@ function setAuthTab(tab) {
 
   $("login-tab").classList.toggle("active", loginSelected);
   $("register-tab").classList.toggle("active", !loginSelected);
-
   $("login-tab").setAttribute("aria-selected", String(loginSelected));
   $("register-tab").setAttribute("aria-selected", String(!loginSelected));
 
@@ -90,7 +113,6 @@ function showWorkspace(user) {
     `${user.name || user.email || "User"} · ${String(user.role || "viewer").toUpperCase()} ROLE`;
 
   $("admin-section").hidden = user.role !== "admin";
-
   clearNotice();
 }
 
@@ -103,7 +125,6 @@ function showSignedOut() {
   authSection.hidden = false;
   workspace.hidden = true;
   $("admin-section").hidden = true;
-
   $("audit-list").replaceChildren();
   documentList.replaceChildren();
 
@@ -114,6 +135,11 @@ function showSignedOut() {
 
 async function refreshCsrfToken() {
   const result = await api("/api/auth/csrf-token");
+
+  if (!result?.csrfToken) {
+    throw new Error("The server did not return a CSRF token.");
+  }
+
   csrfToken = result.csrfToken;
 }
 
@@ -237,16 +263,15 @@ function renderDocuments(docs) {
     info.append(el("h4", "", doc.name || "Untitled document"));
 
     const meta = el("div", "document-meta");
+    meta.append(el("span", "pill", doc.category || "Uncategorized"));
 
-    meta.append(
-      el("span", "pill", doc.category || "Uncategorized")
-    );
+    const isOwner = ownsDocument(doc);
 
     meta.append(
       el(
         "span",
-        ownsDocument(doc) ? "pill" : "pill shared",
-        ownsDocument(doc) ? "Owned by you" : "Shared with you"
+        isOwner ? "pill" : "pill shared",
+        isOwner ? "Owned by you" : "Shared with you"
       )
     );
 
@@ -269,12 +294,10 @@ function renderDocuments(docs) {
     }
 
     if (doc.id && hasEditPermission(doc)) {
-      actions.append(
-        button("Edit details", () => editDocument(doc))
-      );
+      actions.append(button("Edit details", () => editDocument(doc)));
     }
 
-    if (doc.id && ownsDocument(doc)) {
+    if (doc.id && isOwner) {
       actions.append(
         button("Share access", () => shareDocument(doc)),
         button("Revoke access", () => revokeDocument(doc)),
@@ -307,7 +330,6 @@ async function loadDocuments(filters = activeFilters) {
   }
 
   const query = params.toString();
-
   const result = await api(
     `/api/documents${query ? `?${query}` : ""}`
   );
@@ -324,7 +346,6 @@ async function loadDocuments(filters = activeFilters) {
 
   activeFilters = { ...(filters || {}) };
   cachedDocuments = docs;
-
   renderDocuments(docs);
 
   const active = Object.entries(activeFilters)
@@ -365,7 +386,6 @@ async function downloadDocument(doc) {
   link.remove();
 
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-
   showNotice("Download started.");
 }
 
@@ -400,21 +420,98 @@ async function editDocument(doc) {
   showNotice("Document details updated.");
 }
 
+/*
+ * Share a document by the recipient's registered email address.
+ * The backend searches for the account and returns its user ID.
+ * The existing permissions endpoint then grants the selected access.
+ */
 async function shareDocument(doc) {
-  const userId = window.prompt(
-    "Enter the existing TrustVault user's ID (UUID) to share with:"
+  const emailInput = window.prompt(
+    "Enter the recipient's registered email address:",
+    ""
   );
 
-  if (userId === null) return;
+  if (emailInput === null) return;
 
-  const targetId = userId.trim();
+  const email = emailInput.trim();
 
-  if (!targetId) {
-    throw new Error("A user ID is required.");
+  if (
+    email.length < 3 ||
+    email.length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  ) {
+    throw new Error("Please enter a valid email address.");
   }
 
+  const result = await api(
+    `/api/documents/users/search?email=${encodeURIComponent(email)}`
+  );
+
+  const users = result?.users;
+
+  if (!Array.isArray(users)) {
+    throw new Error(
+      "Unexpected user-search response. Check the backend API."
+    );
+  }
+
+  if (users.length === 0) {
+    showNotice(
+      "No matching account found. Ask the recipient to register or check their email.",
+      "error"
+    );
+    return;
+  }
+
+  // Require an exact email match, not just a partial search result.
+  const matches = users.filter(
+    (user) =>
+      typeof user.email === "string" &&
+      user.email.toLowerCase() === email.toLowerCase()
+  );
+
+  if (matches.length === 0) {
+    showNotice(
+      "No exact email match found. Check the address and try again.",
+      "error"
+    );
+    return;
+  }
+
+  if (matches.length > 1) {
+    throw new Error(
+      "Multiple accounts returned the same email. Please contact support."
+    );
+  }
+
+  const recipient = matches[0];
+
+  if (!UUID_PATTERN.test(recipient.id || "")) {
+    throw new Error(
+      "The selected account has an invalid user ID. Please try again."
+    );
+  }
+
+  if (
+    currentUser?.id &&
+    recipient.id.toLowerCase() === String(currentUser.id).toLowerCase()
+  ) {
+    throw new Error("You cannot share a document with yourself.");
+  }
+
+  const confirmed = window.confirm(
+    `Share "${doc.name || "this document"}" with:\n\n` +
+      `${recipient.name || "TrustVault user"}\n` +
+      `${recipient.email}\n\n` +
+      "Continue to choose the access level?"
+  );
+
+  if (!confirmed) return;
+
   const access = window.prompt(
-    "Enter READ or EDIT. EDIT includes read access.",
+    "Choose access level:\n\n" +
+      "READ = View and download\n" +
+      "EDIT = View, download, and edit document details",
     "READ"
   );
 
@@ -432,7 +529,7 @@ async function shareDocument(doc) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: targetId,
+        userId: recipient.id,
         canRead: true,
         canEdit: level === "edit"
       })
@@ -440,24 +537,86 @@ async function shareDocument(doc) {
   );
 
   showNotice(
-    `Access granted: ${level.toUpperCase()}. The recipient can refresh their document library.`
+    `Access granted to ${recipient.email}: ${level.toUpperCase()}.`
   );
 }
 
+/**
+ * Fetch only the users who currently have access to this document.
+ * The backend endpoint verifies that the current user owns the document.
+ */
 async function revokeDocument(doc) {
-  const userId = window.prompt(
-    "Enter the TrustVault user ID (UUID) whose access should be revoked:"
+  const result = await api(
+    `/api/documents/${encodeURIComponent(doc.id)}/permissions`
   );
 
-  if (userId === null) return;
+  const permissions = result?.permissions;
 
-  const targetId = userId.trim();
-
-  if (!targetId) {
-    throw new Error("A user ID is required.");
+  if (!Array.isArray(permissions)) {
+    throw new Error(
+      "Unexpected permissions response. Check the document permissions API."
+    );
   }
 
-  if (!window.confirm("Revoke this user's access to the selected document?")) {
+  if (permissions.length === 0) {
+    showNotice(
+      "No other users currently have access to this document."
+    );
+    return;
+  }
+
+  const choices = permissions.map((permission, index) => {
+    const identity =
+      permission.name && permission.email
+        ? `${permission.name} (${permission.email})`
+        : permission.email || permission.name || "Unknown user";
+
+    const access = permission.can_edit
+      ? "Read and edit"
+      : permission.can_read
+        ? "Read only"
+        : "No active read permission";
+
+    return `${index + 1}. ${identity} — ${access}`;
+  });
+
+  const answer = window.prompt(
+    `Select the user whose access you want to revoke from "${doc.name}".\n\n` +
+    choices.join("\n") +
+    "\n\nEnter the number next to the user. Cancel to keep all permissions."
+  );
+
+  if (answer === null) return;
+
+  const selection = answer.trim();
+
+  if (!/^\d+$/.test(selection)) {
+    throw new Error("Enter the number next to the user.");
+  }
+
+  const index = Number(selection) - 1;
+
+  if (index < 0 || index >= permissions.length) {
+    throw new Error("That selection is not in the list.");
+  }
+
+  const selected = permissions[index];
+  const targetId = selected.user_id;
+
+  if (!UUID_PATTERN.test(targetId || "")) {
+    throw new Error(
+      "The selected permission has an invalid user ID. Refresh and try again."
+    );
+  }
+
+  const identity =
+    selected.email || selected.name || "the selected user";
+
+  if (
+    !window.confirm(
+      `Revoke ${identity}'s access to "${doc.name}"?`
+    )
+  ) {
     return;
   }
 
@@ -466,8 +625,8 @@ async function revokeDocument(doc) {
     { method: "DELETE" }
   );
 
-  await loadDocuments();
-  showNotice("Document access revoked.");
+  await loadDocuments(activeFilters);
+  showNotice(`Access revoked for ${identity}.`);
 }
 
 async function deleteDocument(doc) {
@@ -590,7 +749,6 @@ registerForm.addEventListener("submit", async (event) => {
 
     registerForm.reset();
     setAuthTab("login");
-
     showNotice("Account created. Sign in with your new account.");
   } catch (error) {
     showNotice(error.message, "error");
@@ -689,7 +847,6 @@ $("logout-button").addEventListener("click", async () => {
 
   try {
     await api("/api/auth/logout", { method: "POST" });
-
     showSignedOut();
     setAuthTab("login");
     showNotice("You have signed out.");

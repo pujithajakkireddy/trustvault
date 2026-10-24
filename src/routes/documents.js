@@ -1,3 +1,5 @@
+"use strict";
+
 const express = require("express");
 const crypto = require("node:crypto");
 const pool = require("../db/database");
@@ -12,6 +14,46 @@ const router = express.Router();
 
 const DOCUMENT_UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Find a registered TrustVault user by exact email.
+ * Requires authentication and returns minimal account details.
+ */
+router.get("/users/search", requireAuth, async (req, res) => {
+  const email = req.query.email;
+
+  if (
+    typeof email !== "string" ||
+    email.trim().length < 3 ||
+    email.trim().length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  ) {
+    return res.status(400).json({
+      error: "Enter a valid email address.",
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       WHERE LOWER(email) = LOWER($1)
+         AND id <> $2
+       LIMIT 1`,
+      [email.trim(), req.session.user.id]
+    );
+
+    return res.status(200).json({
+      users: result.rows,
+    });
+  } catch (error) {
+    console.error("User email search failed:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to search for users.",
+    });
+  }
+});
 
 // List documents the logged-in user is allowed to read.
 // Optional filters: name, category, ownerId, from, to.
@@ -164,8 +206,6 @@ router.get("/:id/download", requireAuth, async (req, res) => {
       .update(document.content)
       .digest("hex");
 
-    // Backfill hashes for documents uploaded before integrity checking
-    // was introduced. Existing file contents are not changed.
     if (!document.sha256_hash) {
       await pool.query(
         `UPDATE documents
@@ -178,9 +218,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
         actorId: req.session.user.id,
         action: "document.integrity_check",
         documentId,
-        details: {
-          reason: "sha256_mismatch",
-        },
+        details: { reason: "sha256_mismatch" },
         outcome: "failure",
       });
 
@@ -219,8 +257,7 @@ router.get("/:id/download", requireAuth, async (req, res) => {
   }
 });
 
-
- // Upload a validated document and store its SHA-256 hash in PostgreSQL.
+// Upload a validated document and store its SHA-256 hash in PostgreSQL.
 router.post(
   "/upload",
   requireAuth,
@@ -311,7 +348,6 @@ router.post(
   }
 );
 
-
 /**
  * Grant read or edit access to another existing user.
  * Only the document owner may grant permissions.
@@ -341,7 +377,10 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
     });
   }
 
-  if (userId === req.session.user.id) {
+  if (
+    userId.toLowerCase() ===
+    String(req.session.user.id).toLowerCase()
+  ) {
     return res.status(400).json({
       error: "You cannot grant document permissions to yourself.",
     });
@@ -431,6 +470,60 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
 });
 
 /**
+ * List users who currently have permission to a document.
+ * Only the document owner may view this list.
+ */
+router.get("/:id/permissions", requireAuth, async (req, res) => {
+  const documentId = req.params.id;
+
+  if (!DOCUMENT_UUID_PATTERN.test(documentId)) {
+    return res.status(400).json({
+      error: "Invalid document ID.",
+    });
+  }
+
+  try {
+    const ownerResult = await pool.query(
+      `SELECT id
+       FROM documents
+       WHERE id = $1 AND owner_id = $2`,
+      [documentId, req.session.user.id]
+    );
+
+    if (ownerResult.rows.length === 0) {
+      return res.status(404).json({
+        error: "Document not found.",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         u.id AS user_id,
+         u.name,
+         u.email,
+         p.can_read,
+         p.can_edit,
+         p.granted_at
+       FROM document_permissions AS p
+       JOIN users AS u ON u.id = p.user_id
+       WHERE p.document_id = $1
+       ORDER BY u.email ASC`,
+      [documentId]
+    );
+
+    return res.status(200).json({
+      permissions: result.rows,
+    });
+  } catch (error) {
+    console.error("Failed to list document permissions:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to retrieve document permissions.",
+    });
+  }
+});
+
+/**
  * Revoke a user's access to a document.
  * Only the document owner may revoke permissions.
  */
@@ -488,9 +581,7 @@ router.delete(
         action: "permission.revoke",
         documentId,
         targetUserId: userId,
-        details: {
-          revoked: true,
-        },
+        details: { revoked: true },
         outcome: "success",
         dbClient: client,
       });
@@ -516,7 +607,6 @@ router.delete(
 /**
  * Permanently delete a document.
  * Only the document owner may delete it.
- * The successful audit event and deletion share one transaction.
  */
 router.delete("/:id", requireAuth, async (req, res) => {
   const { id: documentId } = req.params;
