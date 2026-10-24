@@ -8,7 +8,7 @@ The application uses Node.js, Express, and PostgreSQL. It includes authenticatio
 
 ## Project Status
 
-The core backend features, frontend integration, and security tests have been implemented. The application is still under development, and additional security testing and production configuration work are required before it should be used for sensitive documents.
+The core backend features, frontend integration, and security tests have been implemented. TrustVault has been deployed to Render and verified through selected application workflows and access-control checks. The project remains a working prototype: additional security testing, production configuration review, and persistent file storage are required before it should be used for sensitive documents.
 
 ### Implemented Features
 
@@ -40,7 +40,8 @@ The frontend has been connected to the Express server and manually tested for re
 - Complete API documentation and deployment instructions.
 - Review production configuration, HTTPS and proxy settings, and the PostgreSQL SSL-mode warning.
 - Configure persistent file storage before production use.
-- Deploy the application and verify its behavior in the hosting environment.
+- Continue verifying application behavior and security settings in the deployed Render environment.
+- Configure and verify persistent file storage before production use; uploaded files currently use in-memory storage.
 
 ## Technology Stack
 
@@ -241,6 +242,8 @@ For additional details, see [THREATS.md](THREATS.md).
 ## Repository
 
 GitHub: https://github.com/pujithajakkireddy/trustvault
+
+Live Demo: https://trustvault-0law.onrender.com
 
 ## Conclusion
 

@@ -1,4 +1,4 @@
-# TrustVault Threat Model
+﻿# TrustVault Threat Model
 
 ## 1. Purpose
 
@@ -116,11 +116,11 @@ The main assets that need protection are:
 
 **Threat:** Frontend errors or incorrect API integration could cause users to misunderstand operation results or prevent them from completing document workflows.
 
-**Implemented controls:** The frontend is served by Express and communicates with the existing backend API. Manual checks have covered registration, login, document upload, download, logout, and the signed-out state.
+**Implemented controls:** The frontend is served by Express and communicates with the backend API. Server-side authorization protects document operations and the administrator audit endpoint.
 
-**Verification:** The website loaded locally, the tested uploaded document appeared in the workspace after refreshing, the downloaded file opened correctly, and a viewer was denied access to the administrator audit endpoint.
+**Verification:** Local and deployed application checks covered registration, login, document upload, download, logout, and selected document-management workflows. The deployed administrator account could retrieve audit logs. A viewer-session request to the administrator audit endpoint returned HTTP 403 Forbidden. The latest full automated test run passed 46 tests, with 0 failures and 0 skipped tests.
 
-**Remaining risk:** Complete regression testing is still required for permission grants and revocations, metadata editing, deletion, and the administrator audit interface. Frontend behavior must not replace server-side authorization.
+**Remaining risk:** Complete regression testing is still required for all workflows and error paths. Frontend visibility controls must not replace server-side authorization.
 
 ### T11. Loss of Uploaded Files
 
@@ -136,11 +136,13 @@ The main assets that need protection are:
 
 **Threat:** Incorrect production settings could expose sessions, database credentials, or protected application functionality.
 
-**Current status:** The application has been tested locally. Production deployment and its security settings have not yet been verified.
+**Current status:** TrustVault has been deployed to Render, and the deployed application has been checked. The administrator audit endpoint was verified to reject a viewer's request with HTTP 403 Forbidden. However, successful deployment and selected access-control checks do not establish that every production security setting is correct.
 
-**Required mitigation:** Use HTTPS, configure secure session cookies and trusted proxy settings correctly, keep secrets in the hosting provider's environment configuration, review database SSL settings, and test authentication and authorization after deployment.
+**Implemented controls:** The application uses server-side authentication, PostgreSQL-backed sessions, role-based authorization, security headers, and login rate limiting. These controls have been implemented in the application, but their complete production configuration has not yet been independently verified.
 
-**Remaining risk:** These controls must be checked in the actual hosting environment before the application is considered ready for sensitive documents.
+**Required mitigation:** Verify HTTPS, secure session-cookie settings, trusted proxy configuration, environment-secret handling, database SSL settings, and authentication and authorization behavior in the deployed environment.
+
+**Remaining risk:** Production configuration review is incomplete. Uploaded files use Multer in-memory storage and are not guaranteed to persist across process restarts. Do not use the application to store sensitive production documents until persistent storage and the remaining security controls have been reviewed and verified.
 
 ## 4. Security Verification Record
 

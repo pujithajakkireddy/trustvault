@@ -334,3 +334,27 @@ This file records the AI assistance used while developing TrustVault. Entries de
 - Audit-log coverage and immutability, production deployment settings, and database SSL configuration still require review.
 
 **AI assistance disclosure:** AI assistance was used for implementation guidance, debugging, testing instructions, and documentation review. The recorded results reflect the checks performed during development.
+
+## Entry 15 — 2026-10-24: Deployment and Final Verification
+
+**Objective:** Verify the deployed TrustVault application, document-sharing workflows, administrator audit logs, role-based access control, and automated test results before submission.
+
+**AI assistance used:** Used AI guidance to inspect project configuration, review authorization middleware and authentication logic, interpret browser-console results, verify deployment status, and prepare the final submission checklist.
+
+**Verification performed:**
+
+- Confirmed the local Git working tree was clean and the `main` branch was up to date with `origin/main`.
+- Confirmed Render reported a successful live deployment for commit `4bdd3e1`, `Fix email-based document sharing`.
+- Verified that the administrator account could access the audit-log interface.
+- Verified that the viewer account could not access the administrator audit endpoint; the request returned HTTP 403 Forbidden.
+- Ran `npm test` with `NODE_ENV=test`: 46 tests passed, 0 failed, and 0 skipped.
+- Observed a PostgreSQL SSL-mode compatibility warning during testing; the warning remains to be reviewed.
+
+**Remaining limitations and work:**
+
+- Uploaded files use in-memory storage and are not guaranteed to persist across application restarts.
+- Review PostgreSQL SSL configuration and production session, HTTPS, and proxy settings.
+- Continue reviewing CSRF coverage, audit-log completeness, file validation, and production security.
+- Confirm that README.md, THREATS.md, and PROMPTS.md accurately describe the final implementation and verification results.
+
+**AI assistance disclosure:** AI assistance was used for debugging, verification guidance, and documentation preparation. Results recorded in this entry reflect the checks performed during development and deployment.
