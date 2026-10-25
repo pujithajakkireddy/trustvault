@@ -264,6 +264,8 @@ For additional details, see [THREATS.md](THREATS.md).
 
 **Live Demo:** https://trustvault-0law.onrender.com
 
+**Note on availability:** The hosted application may take longer to respond to the first request after a period of inactivity, depending on the hosting service's current instance state. If the page does not load immediately, wait briefly and try again.
+
 ## Conclusion
 
 TrustVault is a secure document-sharing application developed for the Snovasys Fresher Hiring Challenge 2026. It brings together user authentication, document-level access control, permission management, document-integrity verification, selected audit logging, and a web-based interface.
