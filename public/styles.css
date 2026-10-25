@@ -829,3 +829,13 @@ footer {
     transition: none !important;
   }
 }
+/* Hide browser-provided password reveal controls where supported. */
+input[type="password"]::-ms-reveal {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
