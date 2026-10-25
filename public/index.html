@@ -95,8 +95,23 @@
             autocomplete="username" required>
 
           <label for="login-password">Password</label>
-          <input id="login-password" name="password" type="password"
-            autocomplete="current-password" required>
+          <div class="password-wrapper">
+            <input id="login-password" name="password" type="password"
+              autocomplete="current-password" required>
+            <button
+              class="password-toggle"
+              type="button"
+              aria-label="Show password"
+              aria-controls="login-password"
+              aria-pressed="false"
+              data-password-toggle="login-password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"
+                focusable="false">
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
 
           <button class="button primary full" type="submit">
             Sign in <span aria-hidden="true">→</span>
@@ -118,9 +133,24 @@
             autocomplete="email" required>
 
           <label for="register-password">Password</label>
-          <input id="register-password" name="password" type="password"
-            autocomplete="new-password" minlength="12" maxlength="72"
-            required>
+          <div class="password-wrapper">
+            <input id="register-password" name="password" type="password"
+              autocomplete="new-password" minlength="12" maxlength="72"
+              required>
+            <button
+              class="password-toggle"
+              type="button"
+              aria-label="Show password"
+              aria-controls="register-password"
+              aria-pressed="false"
+              data-password-toggle="register-password">
+              <svg viewBox="0 0 24 24" aria-hidden="true"
+                focusable="false">
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
 
           <p class="hint">
             Use at least 12 characters. New accounts receive viewer role
@@ -281,5 +311,29 @@
       </span>
     </footer>
   </main>
+
+  <script>
+    // Show or hide passwords on both account forms.
+    document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const inputId = button.getAttribute("data-password-toggle");
+        const passwordInput = document.getElementById(inputId);
+
+        if (!passwordInput) return;
+
+        const shouldShow = passwordInput.type === "password";
+
+        passwordInput.type = shouldShow ? "text" : "password";
+        button.setAttribute("aria-pressed", String(shouldShow));
+        button.setAttribute(
+          "aria-label",
+          shouldShow ? "Hide password" : "Show password"
+        );
+
+        // Keep the cursor in the password field after toggling.
+        passwordInput.focus();
+      });
+    });
+  </script>
 </body>
 </html>
