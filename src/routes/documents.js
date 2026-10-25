@@ -134,20 +134,22 @@ router.get("/", requireAuth, async (req, res) => {
 
     const result = await pool.query(
       `SELECT DISTINCT
-         d.id,
-         d.name,
-         d.category,
-         d.mime_type,
-         d.size_bytes,
-         d.owner_id,
-         d.created_at,
-         d.updated_at
-       FROM documents AS d
-       LEFT JOIN document_permissions AS p
-         ON p.document_id = d.id
-        AND p.user_id = $1
-       WHERE ${filters.join(" AND ")}
-       ORDER BY d.created_at DESC`,
+    d.id,
+    d.name,
+    d.category,
+    d.mime_type,
+    d.size_bytes,
+    d.owner_id,
+    d.created_at,
+    d.updated_at,
+    COALESCE(p.can_read, FALSE) AS can_read,
+    COALESCE(p.can_edit, FALSE) AS can_edit
+  FROM documents AS d
+  LEFT JOIN document_permissions AS p
+    ON p.document_id = d.id
+    AND p.user_id = $1
+    WHERE ${filters.join(" AND ")}
+    ORDER BY d.created_at DESC`,
       values
     );
 
