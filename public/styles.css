@@ -886,33 +886,49 @@ footer {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
 }
 
 .password-wrapper input {
-  padding-right: 48px;
+  width: 100%;
+  padding-right: 52px;
+  margin-bottom: 0;
 }
 
 .password-toggle {
   position: absolute;
-  right: 10px;
+  right: 8px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border: 0;
-  border-radius: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
+  box-shadow: none;
 }
 
 .password-toggle:hover {
   color: var(--accent);
-  background: white;
+  background: #202d49;
+  box-shadow: none;
 }
 
 .password-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.password-toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
