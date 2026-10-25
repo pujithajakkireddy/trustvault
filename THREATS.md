@@ -60,7 +60,7 @@ The main assets that need protection are:
 
 **Verification:** Tests check authentication, role-based access, and session invalidation after logout.
 
-**Remaining risk:** Review session lifecycle, error handling, HTTPS and proxy configuration, and CSRF protection on other relevant state-changing requests. Rotate any previously exposed temporary test-account password privately before the final demonstration.
+**Remaining risk:** Review the complete session lifecycle, error handling, HTTPS and proxy configuration, and CSRF protection across relevant state-changing requests. Handle any exposed test credentials securely before the final demonstration.
 
 ### T5. Malicious or Invalid File Uploads
 
@@ -78,7 +78,7 @@ The main assets that need protection are:
 
 **Implemented controls:** An audit service records selected security-related events. The admin-only endpoint allows authorized administrators to view recent audit records.
 
-**Verification:** Tests check selected successful edit and deletion audit entries. Admin endpoint tests also verify access restrictions, returned audit data, and limit validation.
+**Verification:** Tests check selected successful edit and deletion audit entries. Additional tests cover selected denied permission changes. Admin endpoint tests also verify access restrictions, returned audit data, and limit validation.
 
 **Remaining risk:** Audit coverage still needs review for uploads, downloads, permission grants and revocations, denied requests, and failures. Database audit records are not inherently immutable, so the current implementation should not be described as tamper-proof.
 
@@ -108,9 +108,11 @@ The main assets that need protection are:
 
 **Implemented controls:** Automated tests cover selected document-access, permission, search, audit, session, CSRF, upload-validation, and admin-access scenarios.
 
-**Verification:** A previous mutation test showed that the unauthorized-download and revoked-permission tests failed when the relevant authorization condition was deliberately removed. The latest recorded full test run passed 46 tests, with no failures or skipped tests. These results apply only to the scenarios exercised by the test suite and do not constitute a complete security audit.
+**Verification:** A previous mutation test showed that the unauthorized-download and revoked-permission tests failed when the relevant authorization condition was deliberately removed. The latest confirmed full test run passed **48 tests**, with 0 failures, 0 skipped tests, and 0 cancelled tests.
 
-**Remaining risk:** The mutation test checks one specific regression. More security tests and code reviews are needed to cover other possible failures.
+These results apply only to the scenarios exercised by the test suite and do not constitute a complete security audit.
+
+**Remaining risk:** The mutation test checks specific regressions. More security tests and code reviews are needed to cover other possible failures.
 
 ### T10. Frontend and API Integration Errors
 
@@ -118,7 +120,7 @@ The main assets that need protection are:
 
 **Implemented controls:** The frontend is served by Express and communicates with the backend API. Server-side authorization protects document operations and the administrator audit endpoint.
 
-**Verification:** Local and deployed application checks covered registration, login, document upload, download, logout, and selected document-management workflows. The deployed administrator account could retrieve audit logs. A viewer-session request to the administrator audit endpoint returned HTTP 403 Forbidden. The latest full automated test run passed 46 tests, with 0 failures and 0 skipped tests.
+**Verification:** Local and deployed application checks covered registration, login, document upload, download, logout, and selected document-management workflows. The deployed administrator account could retrieve audit logs. A viewer-session request to the administrator audit endpoint returned HTTP 403 Forbidden. The latest confirmed full automated test run passed 48 tests, with 0 failures, 0 skipped tests, and 0 cancelled tests.
 
 **Remaining risk:** Complete regression testing is still required for all workflows and error paths. Frontend visibility controls must not replace server-side authorization.
 
@@ -130,7 +132,12 @@ The main assets that need protection are:
 
 **Verification:** The upload and download code paths confirm that document bytes are written to and retrieved from PostgreSQL. Downloads recalculate the SHA-256 hash and reject files whose stored content does not match the recorded hash. Persistence across an actual Render restart or redeployment has not yet been independently verified.
 
-**Required mitigation:** Verify document retrieval after an application restart or redeployment. Configure suitable database backups and recovery procedures, and confirm that the database retains document content.
+**Required mitigation:**
+
+- Verify document retrieval after an application restart or redeployment.
+- Configure suitable database backups and recovery procedures.
+- Confirm that the database retains document content.
+- Test the recovery process rather than relying only on configuration.
 
 **Remaining risk:** Database availability, backup and recovery, and persistence across deployment events still require verification. The current implementation should not be treated as a substitute for a tested backup strategy.
 
@@ -142,17 +149,25 @@ The main assets that need protection are:
 
 **Implemented controls:** The application uses server-side authentication, PostgreSQL-backed sessions, role-based authorization, security headers, and login rate limiting. These controls have been implemented in the application, but their complete production configuration has not yet been independently verified.
 
-**Required mitigation:** Verify HTTPS, secure session-cookie settings, trusted proxy configuration, environment-secret handling, database SSL settings, and authentication and authorization behavior in the deployed environment.
+**Required mitigation:**
+
+- Verify HTTPS and secure session-cookie settings in the deployed environment.
+- Review trusted proxy configuration.
+- Ensure environment secrets are handled securely.
+- Review database SSL settings and connection security.
+- Test authentication and authorization behavior in the deployed environment.
+- Verify that production settings match the intended security configuration.
 
 **Remaining risk:** Production configuration review is incomplete. Uploaded files are buffered in memory during upload and stored in PostgreSQL after validation, but persistence across actual process restarts or redeployments has not yet been independently verified. Database backup and recovery procedures, production security settings, and the remaining security controls must be reviewed and verified before storing sensitive production documents.
 
 ## 4. Security Verification Record
 
-The latest recorded full test run reported:
+The latest confirmed full test run reported:
 
-- **Tests passed:** 46
+- **Tests passed:** 48
 - **Tests failed:** 0
 - **Tests skipped:** 0
+- **Tests cancelled:** 0
 
 The test suite covers selected scenarios involving:
 
@@ -160,13 +175,14 @@ The test suite covers selected scenarios involving:
 - Unauthorized downloads, editing, and deletion.
 - CSRF-token validation for tested document operations.
 - Search authorization and invalid-filter handling.
-- Selected audit records.
+- Selected successful and denied-operation audit records.
 - Logout and session invalidation.
 - Role-based access to the administrator audit endpoint.
 - Audit endpoint query limits and invalid values.
 - Oversized uploads and unsupported file content.
+- Selected permission grant and revocation authorization checks.
 
-A PostgreSQL SSL-mode compatibility warning has appeared during testing. It did not prevent the recorded test run from passing, but the database connection configuration still needs review.
+A PostgreSQL SSL-mode compatibility warning was observed during earlier testing. Later checks did not return matching SSL-related messages, but production SSL verification has not been independently confirmed. The database connection configuration and deployed environment should be reviewed before production use.
 
 These results apply only to the scenarios exercised by the tests. They are not a complete security audit and do not guarantee production readiness.
 
@@ -180,15 +196,17 @@ The main security tasks still to address are:
 - Continue reviewing session handling and production configuration.
 - Review database SSL settings and deployment security.
 - Complete frontend regression testing for document-management workflows.
-- Configure and verify persistent file storage.
+- Verify document persistence across application restarts and redeployments.
+- Configure and test database backup and recovery procedures.
 - Complete API documentation and deployment instructions.
 - Verify security settings in the deployed environment.
-- Rotate any previously exposed temporary test-account password privately before the final demonstration.
 
 ## 6. Conclusion
 
 Building TrustVault has helped me understand why security checks must be enforced on the server rather than relying on the user interface alone. I have implemented and tested several important protections, including authentication, document-level authorization, selected audit logging, and automated security checks.
 
-The frontend is now integrated with the backend and has been manually tested for selected workflows. However, additional testing, persistent file storage, and production deployment verification remain necessary before the application should be used for sensitive documents.
+The frontend is integrated with the backend and has been manually tested for selected workflows. The latest confirmed full automated test run passed 48 tests, with no failures, skipped tests, or cancelled tests.
+
+However, additional testing, verification of persistent file storage, and production deployment review remain necessary before the application should be used for sensitive documents.
 
 This threat model will be updated as further features are implemented and additional security tests are completed.

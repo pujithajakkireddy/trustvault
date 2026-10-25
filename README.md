@@ -12,7 +12,7 @@ The core backend features, frontend integration, and security tests have been im
 
 The project remains a working prototype. Additional security testing, production configuration review, and verification of database persistence, backup, and recovery are required before it should be used for sensitive documents.
 
-### Implemented Features
+## Implemented Features
 
 - User registration and login with bcrypt password hashing.
 - Server-side sessions stored in PostgreSQL.
@@ -34,18 +34,13 @@ The project remains a working prototype. Additional security testing, production
 
 The frontend has been connected to the Express server and manually tested for registration, login, document upload, download, logout, and the signed-out state. Administrator endpoint access restrictions have also been checked.
 
-### Work Still Needed
+## Limitations and Future Improvements
 
-- Complete frontend regression testing and verify all user workflows.
-- Review CSRF protection across all relevant state-changing routes.
-- Expand audit logging and verify coverage for successful actions, denied requests, and failures.
-- Review audit-log immutability and protection against modification or deletion.
-- Add more tests for malformed files and authorization edge cases.
-- Complete API documentation and deployment instructions.
-- Review production configuration, HTTPS and proxy settings, and the PostgreSQL SSL-mode warning.
-- Verify document persistence across a Render restart or redeployment.
-- Confirm database backup and recovery procedures.
-- Continue verifying application behavior and security settings in the deployed Render environment.
+- Expand audit logging to cover additional failure paths and review audit-record protection against unauthorized modification or deletion.
+- Perform comprehensive frontend regression testing and verify all security-sensitive workflows in the deployed environment.
+- Expand automated tests for malformed files and additional authorization edge cases.
+- Document and test database backup and recovery procedures.
+- Verify document persistence across deployment restarts and continue reviewing production security configuration.
 
 ## Technology Stack
 
@@ -64,46 +59,46 @@ The frontend has been connected to the Express server and manually tested for re
 
 ```text
 trustvault/
-|-- src/
-|   |-- db/
-|   |   |-- database.js
-|   |   |-- schema.sql
-|   |   |-- apply-schema.js
-|   |   `-- check-connection.js
-|   |-- middleware/
-|   |   |-- require-auth.js
-|   |   |-- require-role.js
-|   |   |-- csrf-protection.js
-|   |   `-- upload.js
-|   |-- routes/
-|   |   |-- auth.js
-|   |   |-- documents.js
-|   |   `-- admin.js
-|   |-- services/
-|   |   `-- audit.js
-|   `-- server.js
-|-- tests/
-|   |-- admin-audit.test.js
-|   |-- auth-middleware.test.js
-|   |-- csrf-protection.test.js
-|   |-- document-access.test.js
-|   |-- role-middleware.test.js
-|   `-- run-mutation-check.js
-|-- public/
-|   |-- index.html
-|   |-- styles.css
-|   `-- app.js
-|-- docs/
-|-- .env.example
-|-- .gitignore
-|-- package.json
-|-- package-lock.json
-|-- README.md
-|-- THREATS.md
-`-- PROMPTS.md
+├── src/
+│   ├── db/
+│   │   ├── database.js
+│   │   ├── schema.sql
+│   │   ├── apply-schema.js
+│   │   └── check-connection.js
+│   ├── middleware/
+│   │   ├── require-auth.js
+│   │   ├── require-role.js
+│   │   ├── csrf-protection.js
+│   │   └── upload.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── documents.js
+│   │   └── admin.js
+│   ├── services/
+│   │   └── audit.js
+│   └── server.js
+├── tests/
+│   ├── admin-audit.test.js
+│   ├── auth-middleware.test.js
+│   ├── csrf-protection.test.js
+│   ├── document-access.test.js
+│   ├── role-middleware.test.js
+│   └── run-mutation-check.js
+├── public/
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js
+├── docs/
+├── .env.example
+├── .gitignore
+├── package.json
+├── package-lock.json
+├── README.md
+├── THREATS.md
+└── PROMPTS.md
 ```
 
-This structure describes the expected project layout. Verify it against the repository before submission and update any paths if the actual structure differs.
+This tree documents the intended project layout. Confirm file names and paths against the current repository before submission.
 
 ## Prerequisites
 
@@ -114,20 +109,20 @@ This structure describes the expected project layout. Verify it against the repo
 
 ## Running the Project Locally
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/pujithajakkireddy/trustvault.git
 cd trustvault
 ```
 
-### 2. Install dependencies
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Configure environment variables
+### 3. Configure Environment Variables
 
 Copy `.env.example` to `.env` and replace all placeholder values with your own configuration.
 
@@ -140,16 +135,16 @@ Copy-Item .env.example .env
 Configure these variables:
 
 - `DATABASE_URL`: PostgreSQL connection string for the application database.
-- `SESSION_SECRET`: a private random secret containing at least 32 characters.
-- `NODE_ENV`: the runtime environment, such as `development`, `test`, or `production`.
-- `PORT`: optional local server port; the default is `3000`.
-- `TEST_DATABASE_URL`: a separate PostgreSQL database connection string for integration tests.
+- `SESSION_SECRET`: A private random secret containing at least 32 characters.
+- `NODE_ENV`: The runtime environment, such as `development`, `test`, or `production`.
+- `PORT`: Optional local server port; the default is `3000`.
+- `TEST_DATABASE_URL`: A separate PostgreSQL database connection string for integration tests.
 
 Use a separate test database. Never point tests at production data.
 
 Never commit `.env` or publish database credentials, session secrets, or real account passwords.
 
-### 4. Apply the database schema
+### 4. Apply the Database Schema
 
 ```bash
 node src/db/apply-schema.js
@@ -157,13 +152,13 @@ node src/db/apply-schema.js
 
 Verify that the script is configured to use the intended database before running it. Do not run schema changes against a database containing important data unless you understand their effects.
 
-### 5. Start the application
+### 5. Start the Application
 
 ```bash
 npm start
 ```
 
-### 6. Open the application
+### 6. Open the Application
 
 Open the following address in your browser:
 
@@ -189,7 +184,7 @@ The backend health endpoint can be checked at:
 
 TrustVault uses Node.js's built-in test runner and Supertest to check selected application and security behavior.
 
-### Run the integration tests
+### Run the Integration Tests
 
 In Windows PowerShell:
 
@@ -198,7 +193,7 @@ $env:NODE_ENV = "test"
 npm run test:integration
 ```
 
-### Run the full test suite
+### Run the Full Test Suite
 
 ```powershell
 $env:NODE_ENV = "test"
@@ -211,9 +206,10 @@ Make sure `TEST_DATABASE_URL` is configured and the test database is reachable b
 
 The latest confirmed full test run reported:
 
-- **Passed:** 46
+- **Passed:** 48
 - **Failed:** 0
 - **Skipped:** 0
+- **Cancelled:** 0
 
 The tests cover selected scenarios involving:
 
@@ -227,10 +223,12 @@ The tests cover selected scenarios involving:
 - Audit endpoint limits and invalid query parameters.
 - Oversized uploads and unsupported file content.
 - Document-integrity failure detection.
+- Permission grant and revocation authorization checks.
+- Audit records for selected denied permission changes.
 
 These results apply only to the scenarios covered by the tests. Passing the suite does not guarantee that every feature works in every situation or that the application has no security vulnerabilities.
 
-A PostgreSQL SSL-mode compatibility warning has appeared during testing. It did not prevent the recorded test run from passing, but the database connection configuration still needs review.
+A PostgreSQL SSL-mode compatibility warning was observed during earlier testing. Later checks did not return matching SSL-related messages, but production SSL verification has not been independently confirmed. The database connection configuration and deployed environment should be reviewed before production use.
 
 ## Security Considerations
 
@@ -241,15 +239,15 @@ The current implementation includes password hashing, server-side sessions, docu
 The following limitations remain:
 
 - **File validation:** File-signature checks do not provide complete file-format validation. Malware scanning is not implemented.
-- **CSRF protection:** Protection requires further review across all relevant state-changing endpoints.
+- **CSRF protection:** CSRF-token validation is implemented for protected operations, but coverage across all relevant state-changing endpoints still requires review.
 - **Audit logging:** Coverage is not yet proven complete. Database audit records are not inherently immutable or tamper-proof.
-- **File storage:** Multer buffers incoming uploads in memory. After validation, document bytes are stored in PostgreSQL in the `documents.content` column (`BYTEA`), alongside a SHA-256 hash. Persistence across an actual Render restart or redeployment has not yet been independently verified. Database availability, backup, and recovery still need to be verified for production use.
-- **Production configuration:** HTTPS, proxy settings, secure session-cookie behavior, database connection security, and the PostgreSQL SSL-mode warning require review.
+- **File storage:** Multer buffers incoming uploads in memory. After validation, document bytes are stored in PostgreSQL in the `documents.content` column (`BYTEA`), alongside a SHA-256 hash. Persistence across an actual Render restart or redeployment has not yet been independently verified. Database availability, backup, and recovery also need to be verified for production use.
+- **Production configuration:** HTTPS, proxy settings, secure session-cookie behavior, database connection security, and PostgreSQL SSL configuration require review.
 - **Testing:** Automated tests cover selected scenarios, not every possible attack or failure.
 
 The recorded test results provide evidence for the scenarios exercised; they do not constitute a complete security audit or guarantee production readiness.
 
-Do not use the application to store sensitive production documents until the remaining security and storage concerns have been addressed.
+**Do not use the application to store sensitive production documents until the remaining security and storage concerns have been addressed.**
 
 For additional details, see [THREATS.md](THREATS.md).
 
@@ -262,15 +260,15 @@ For additional details, see [THREATS.md](THREATS.md).
 
 ## Repository
 
-GitHub: https://github.com/pujithajakkireddy/trustvault
+**GitHub:** https://github.com/pujithajakkireddy/trustvault
 
-Live Demo: https://trustvault-0law.onrender.com
+**Live Demo:** https://trustvault-0law.onrender.com
 
 ## Conclusion
 
 TrustVault is a secure document-sharing application developed for the Snovasys Fresher Hiring Challenge 2026. It brings together user authentication, document-level access control, permission management, document-integrity verification, selected audit logging, and a web-based interface.
 
-The implementation has been verified through automated tests covering key authorization, session, CSRF, upload-validation, search, and audit scenarios. The latest confirmed full test run passed 46 tests with no failures or skipped tests.
+The implementation has been verified through automated tests covering key authorization, session, CSRF, upload-validation, search, and audit scenarios. The latest confirmed full test run passed **48 tests**, with **0 failures, 0 skipped tests, and 0 cancelled tests**.
 
 TrustVault demonstrates the practical application of security principles such as server-side authorization, controlled document access, password hashing, session management, and integrity checking.
 
