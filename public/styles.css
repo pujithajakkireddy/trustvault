@@ -909,7 +909,7 @@ footer {
 
 .password-toggle:hover {
   color: var(--accent);
-  background: #ffffff0a;
+  background: white;
 }
 
 .password-toggle:focus-visible {
