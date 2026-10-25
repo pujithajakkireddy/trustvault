@@ -48,11 +48,17 @@ button {
   cursor: pointer;
 }
 
+
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 1px;
+}
+
+input:focus {
+  border-color: var(--accent);
+  box-shadow: none;
 }
 
 .topbar {
