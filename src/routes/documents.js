@@ -400,11 +400,24 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
     );
 
     if (documentResult.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        error: "Document not found.",
-      });
-    }
+    await client.query("ROLLBACK");
+
+    await writeAuditLog({
+      actorId: req.session.user.id,
+      action: "permission.grant",
+      documentId: null,
+      targetUserId: userId,
+      details: {
+        requestedDocumentId: documentId,
+        reason: "not_found_or_not_owner",
+      },
+      outcome: "denied",
+    });
+
+    return res.status(404).json({
+      error: "Document not found.",
+    });
+  }
 
     const userResult = await client.query(
       "SELECT id FROM users WHERE id = $1",
@@ -412,11 +425,23 @@ router.put("/:id/permissions", requireAuth, async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        error: "Target user not found.",
-      });
-    }
+  await client.query("ROLLBACK");
+
+  await writeAuditLog({
+    actorId: req.session.user.id,
+    action: "permission.grant",
+    documentId,
+    targetUserId: null,
+    details: {
+      reason: "target_user_not_found",
+    },
+    outcome: "denied",
+  });
+
+  return res.status(404).json({
+    error: "Target user not found.",
+  });
+}
 
     const permissionResult = await client.query(
       `INSERT INTO document_permissions
@@ -556,11 +581,24 @@ router.delete(
       );
 
       if (documentResult.rows.length === 0) {
-        await client.query("ROLLBACK");
-        return res.status(404).json({
-          error: "Document not found.",
-        });
-      }
+  await client.query("ROLLBACK");
+
+  await writeAuditLog({
+    actorId: req.session.user.id,
+    action: "permission.revoke",
+    documentId: null,
+    targetUserId: userId,
+    details: {
+      requestedDocumentId: documentId,
+      reason: "not_found_or_not_owner",
+    },
+    outcome: "denied",
+  });
+
+  return res.status(404).json({
+    error: "Document not found.",
+  });
+}
 
       const result = await client.query(
         `DELETE FROM document_permissions
@@ -570,11 +608,23 @@ router.delete(
       );
 
       if (result.rows.length === 0) {
-        await client.query("ROLLBACK");
-        return res.status(404).json({
-          error: "Permission not found.",
-        });
-      }
+  await client.query("ROLLBACK");
+
+  await writeAuditLog({
+    actorId: req.session.user.id,
+    action: "permission.revoke",
+    documentId,
+    targetUserId: userId,
+    details: {
+      reason: "permission_not_found",
+    },
+    outcome: "denied",
+  });
+
+  return res.status(404).json({
+    error: "Permission not found.",
+  });
+}
 
       await writeAuditLog({
         actorId: req.session.user.id,

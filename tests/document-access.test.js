@@ -134,7 +134,38 @@ test("document access respects ownership, grants, and revocation", async (t) => 
         );
       }
     );
+    await t.test(
+      "denied permission grant is audited when requester is not the owner",
+      async () => {
+        const csrfToken = await getCsrfToken(viewerAgent);
 
+        const response = await viewerAgent
+          .put(`/api/documents/${documentId}/permissions`)
+          .set("X-CSRF-Token", csrfToken)
+          .send({
+            userId: ownerId,
+            canRead: true,
+            canEdit: false,
+          });
+
+        assert.equal(response.status, 404);
+
+        const audit = await pool.query(
+          `SELECT action, outcome, details
+          FROM audit_logs
+          WHERE actor_id = $1
+            AND action = 'permission.grant'
+            AND outcome = 'denied'
+            AND details->>'requestedDocumentId' = $2::text
+          ORDER BY created_at DESC
+          LIMIT 1`,
+          [viewerId, documentId]
+        );
+
+        assert.equal(audit.rows.length, 1);
+        assert.equal(audit.rows[0].details.reason, "not_found_or_not_owner");
+      }
+    );
     await t.test("granting permission rejects a missing CSRF token", async () => {
       const response = await ownerAgent
         .put(`/api/documents/${documentId}/permissions`)
@@ -169,7 +200,40 @@ test("document access respects ownership, grants, and revocation", async (t) => 
       assert.equal(response.headers["x-content-type-options"], "nosniff");
       assert.equal(response.body.toString(), "%PDF-1.4");
     });
+    await t.test(
+    "denied permission revocation is audited when requester is not the owner",
+    async () => {
+    const csrfToken = await getCsrfToken(viewerAgent);
+    const response = await viewerAgent
+       .delete(`/api/documents/${documentId}/permissions/${ownerId}`)
+       .set("X-CSRF-Token", csrfToken)
+       .send({});
+    assert.equal(response.status, 404);
 
+    const audit = await pool.query(
+      `SELECT action, outcome, details
+       FROM audit_logs
+       WHERE actor_id = $1
+         AND action = 'permission.revoke'
+         AND outcome = 'denied'
+         AND details->>'requestedDocumentId' = $2::text
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [viewerId, documentId]
+    );
+
+    assert.equal(
+      audit.rows.length,
+      1,
+      "Denied permission revocation should be audited"
+    );
+
+    assert.equal(
+      audit.rows[0].details.reason,
+      "not_found_or_not_owner"
+    );
+  }
+);
     await t.test("revoking permission rejects a missing CSRF token", async () => {
       const response = await ownerAgent.delete(
         `/api/documents/${documentId}/permissions/${viewerId}`
